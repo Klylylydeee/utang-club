@@ -1,27 +1,32 @@
 import "server-only";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { DomainError } from "@/lib/actions/result";
 import type { Actor } from "@/lib/auth/actor";
 import { connectToDatabase } from "@/lib/db/connect";
 import { Person } from "@/models/Person";
 import { Tab } from "@/models/Tab";
+import { TabShare } from "@/models/TabShare";
 import { Transaction } from "@/models/Transaction";
 import { User } from "@/models/User";
 import { normalizePersonName, type PersonDelete, type PersonInput, type PersonUpdate } from "@/schemas/person";
 import type { CreateTabInput, SetTabArchivedInput, UpdateTabDetailsInput } from "@/schemas/tab";
-import type { PersonSummary, TabAccess, TabDetail, TabStatus, TabSummary } from "./types";
+import type { PersonSummary, SharedTabSummary, TabAccess, TabDetail, TabStatus, TabSummary } from "./types";
 
 /**
  * Tabs and participants. Inputs are already Zod-validated (ids are valid
  * 24-hex strings). Expected failures throw DomainError; callers map them.
  *
- * Access (D15–D17): an owner can read and change their tabs; an admin can
- * read anyone's but change only their own; anyone else gets "not found",
- * so tab ids can't be probed.
+ * Access (D15–D17, D19): an owner can read and change their tabs and manage
+ * them (rename, archive, share). Someone the tab is shared with as an
+ * editor can change what's inside it; as a viewer, only read it. An admin
+ * can read anyone's tab. Anyone else gets "not found", so tab ids can't be
+ * probed.
  */
 
 const READ_ONLY_MESSAGE = "This tab is archived. Unarchive it to make changes.";
 const ADMIN_READ_ONLY_MESSAGE = "Administrators can view other people's tabs but can't change them.";
+const VIEWER_READ_ONLY_MESSAGE = "You can view this tab, but not change it. Ask its owner for edit access.";
+const OWNER_ONLY_MESSAGE = "Only the tab's owner can do this.";
 const NOT_FOUND_MESSAGE = "This tab no longer exists.";
 
 type TabDoc = {
@@ -69,6 +74,30 @@ export async function listTabsForUser(userId: string, actor: Actor): Promise<Tab
 async function listTabsOwnedBy(userId: string): Promise<TabSummary[]> {
   await connectToDatabase();
   const tabs = await Tab.find({ ownerId: new Types.ObjectId(userId) }).sort({ updatedAt: -1 }).lean<TabDoc[]>();
+  return summarize(tabs);
+}
+
+/** Tabs other people shared with the actor (D19), most recently updated first. */
+export async function listSharedTabs(actor: Actor): Promise<SharedTabSummary[]> {
+  await connectToDatabase();
+  const shares = await TabShare.find({ userId: new Types.ObjectId(actor.userId) }, { tabId: 1, role: 1 }).lean();
+  if (shares.length === 0) return [];
+  const roles = new Map(shares.map((share) => [share.tabId.toString(), share.role]));
+  const tabs = await Tab.find({ _id: mongoose.trusted({ $in: shares.map((share) => share.tabId) }) })
+    .sort({ updatedAt: -1 })
+    .lean<TabDoc[]>();
+  const ownerIds = tabs.flatMap((tab) => (tab.ownerId ? [tab.ownerId] : []));
+  const owners = await User.find({ _id: mongoose.trusted({ $in: ownerIds }) }, { name: 1 }).lean();
+  const ownerNames = new Map(owners.map((owner) => [owner._id.toString(), owner.name]));
+  const summaries = await summarize(tabs);
+  return summaries.map((summary, index) => ({
+    ...summary,
+    ownerName: ownerNames.get(tabs[index].ownerId?.toString() ?? "") ?? "Unknown",
+    role: roles.get(summary.id) === "editor" ? "editor" : "viewer",
+  }));
+}
+
+async function summarize(tabs: TabDoc[]): Promise<TabSummary[]> {
   const ids = tabs.map((tab) => tab._id);
   const [people, transactions] = await Promise.all([countByTab(Person, ids), countByTab(Transaction, ids)]);
   return tabs.map((tab) =>
@@ -81,7 +110,7 @@ export async function getTabDetail(tabId: string, actor: Actor): Promise<TabDeta
   await connectToDatabase();
   const id = new Types.ObjectId(tabId);
   const tab = await Tab.findById(id).lean<TabDoc>();
-  const access = tab ? accessTo(tab, actor) : null;
+  const access = tab ? await accessTo(tab, actor) : null;
   if (!tab || !access) return null;
 
   const [people, involvement, transactionCount] = await Promise.all([
@@ -102,7 +131,7 @@ export async function getTabDetail(tabId: string, actor: Actor): Promise<TabDeta
     transactionCount: counts.get(person._id.toString()) ?? 0,
   }));
 
-  const owner = access === "admin" && tab.ownerId ? await User.findById(tab.ownerId, { name: 1 }).lean() : null;
+  const owner = access !== "owner" && tab.ownerId ? await User.findById(tab.ownerId, { name: 1 }).lean() : null;
 
   return {
     tab: toSummary(tab, people.length, transactionCount),
@@ -191,31 +220,55 @@ export async function deletePerson(input: PersonDelete, actor: Actor): Promise<{
   return { tabId: person.tabId.toString() };
 }
 
-/** "owner", "admin" (may read, not change), or null (may not see it at all). */
-function accessTo(tab: TabDoc, actor: Actor): TabAccess | null {
+/**
+ * How the actor may use the tab, or null if they may not see it at all.
+ * A share is more specific than the admin role, so an admin a tab is
+ * shared with gets that share's access.
+ */
+async function accessTo(tab: TabDoc, actor: Actor): Promise<TabAccess | null> {
   if (tab.ownerId?.equals(actor.userId)) return "owner";
+  const share = await TabShare.findOne({ tabId: tab._id, userId: new Types.ObjectId(actor.userId) }, { role: 1 }).lean();
+  if (share) return share.role === "editor" ? "editor" : "viewer";
   return actor.role === "admin" ? "admin" : null;
 }
 
-/** Throws unless the actor may see the tab (owner or admin). Used by reads inside a tab. */
-export async function loadReadableTab(tabId: string, actor: Actor) {
+async function loadTabWithAccess(tabId: string, actor: Actor) {
   const tab = await Tab.findById(new Types.ObjectId(tabId)).lean<TabDoc>();
-  if (!tab || !accessTo(tab, actor)) throw new DomainError("not-found", NOT_FOUND_MESSAGE);
-  return tab;
+  const access = tab ? await accessTo(tab, actor) : null;
+  if (!tab || !access) throw new DomainError("not-found", NOT_FOUND_MESSAGE);
+  return { tab, access };
 }
 
-/** Throws unless the actor owns the tab. Archived tabs pass (they can be unarchived). */
+/** Throws unless the actor may see the tab (owner, shared, or admin). Used by reads inside a tab. */
+export async function loadReadableTab(tabId: string, actor: Actor) {
+  return (await loadTabWithAccess(tabId, actor)).tab;
+}
+
+/**
+ * Throws unless the actor owns the tab. For renaming, archiving and
+ * sharing. Archived tabs pass (they can be unarchived).
+ */
 export async function loadOwnedTab(tabId: string, actor: Actor) {
-  const tab = await loadReadableTab(tabId, actor);
-  if (accessTo(tab, actor) !== "owner") throw new DomainError("read-only", ADMIN_READ_ONLY_MESSAGE);
+  const { tab, access } = await loadTabWithAccess(tabId, actor);
+  if (access !== "owner") throw new DomainError("read-only", readOnlyMessage(access));
   return tab;
 }
 
-/** Throws unless the actor owns the tab and it is active (D6). Used by every write inside a tab. */
+/**
+ * Throws unless the actor may change what's inside the tab (its owner, or
+ * an editor) and it is active (D6). Used by every write inside a tab.
+ */
 export async function loadWritableTab(tabId: string, actor: Actor) {
-  const tab = await loadOwnedTab(tabId, actor);
+  const { tab, access } = await loadTabWithAccess(tabId, actor);
+  if (access !== "owner" && access !== "editor") throw new DomainError("read-only", readOnlyMessage(access));
   if (tab.status === "archived") throw new DomainError("read-only", READ_ONLY_MESSAGE);
   return tab;
+}
+
+function readOnlyMessage(access: TabAccess): string {
+  if (access === "admin") return ADMIN_READ_ONLY_MESSAGE;
+  if (access === "viewer") return VIEWER_READ_ONLY_MESSAGE;
+  return OWNER_ONLY_MESSAGE;
 }
 
 async function loadPerson(personId: string) {

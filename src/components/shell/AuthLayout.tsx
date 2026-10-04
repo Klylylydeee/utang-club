@@ -3,7 +3,7 @@ import { BrandMark } from "./BrandMark";
 
 const PROMISES = [
   { title: "Every balance has receipts", body: "Open any settlement to see the exact rows behind it." },
-  { title: "Private to your account", body: "Only you see your tabs. Administrators can view, never edit." },
+  { title: "Private unless you share", body: "Your tabs are yours. Share one with a friend to view or edit together." },
   { title: "Exact to the centavo", body: "Reciprocal debts are netted pair by pair, with no rounding drift." },
 ];
 
@@ -67,6 +67,9 @@ export function AuthLayout(props: { title: string; subtitle: ReactNode; children
             {props.footer}
           </div>
         </div>
+        <p className="px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center text-[13px] text-ink-secondary">
+          Created by cly_gvr32
+        </p>
       </main>
     </div>
   );

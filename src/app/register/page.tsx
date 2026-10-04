@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthLayout } from "@/components/shell/AuthLayout";
-import { authIsConfigured, InsecureNotice, SetupNotice } from "@/components/shell/AuthNotices";
+import { authIsConfigured, SetupNotice } from "@/components/shell/AuthNotices";
 import { LOGIN_PATH } from "@/lib/auth/constants";
-import { getRequestContext } from "@/lib/auth/requestContext";
 import { getSession } from "@/lib/auth/session";
 import { RegisterForm } from "./RegisterForm";
 
@@ -13,7 +12,6 @@ export const metadata: Metadata = { title: "Create an account" };
 export default async function RegisterPage() {
   const configured = authIsConfigured();
   if (configured && (await getSession())) redirect("/");
-  const { isHttps } = await getRequestContext();
 
   return (
     <AuthLayout
@@ -27,7 +25,6 @@ export default async function RegisterPage() {
               Sign in
             </Link>
           </p>
-          {!isHttps && <InsecureNotice />}
         </>
       }
     >

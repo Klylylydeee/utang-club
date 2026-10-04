@@ -2,3 +2,6 @@ allowBuilds:
   mongodb-memory-server: false
   sharp: false
   unrs-resolver: false
+
+# Lets package scripts use `NAME=value command` on Windows too (pnpm e2e:dev).
+shellEmulator: true

@@ -4,11 +4,12 @@ import { TabList } from "@/components/tabs/TabCard";
 import { buttonStyles, cardStyles } from "@/components/ui/styles";
 import { actorFrom } from "@/lib/auth/actor";
 import { requireSession } from "@/lib/auth/session";
-import { listTabs } from "@/lib/tabs/tabService";
+import { listSharedTabs, listTabs } from "@/lib/tabs/tabService";
 
 export default async function TabsPage() {
   const { user } = await requireSession();
-  const tabs = await listTabs(actorFrom(user));
+  const actor = actorFrom(user);
+  const [tabs, shared] = await Promise.all([listTabs(actor), listSharedTabs(actor)]);
   const active = tabs.filter((tab) => tab.status === "active");
   const archived = tabs.filter((tab) => tab.status === "archived");
 
@@ -42,6 +43,22 @@ export default async function TabsPage() {
             Open ({active.length})
           </h2>
           <TabList tabs={active} label="Open tabs" />
+        </section>
+      )}
+
+      {shared.length > 0 && (
+        <section aria-labelledby="shared-heading" className="space-y-3">
+          <h2 id="shared-heading" className="text-[15px] font-semibold text-ink-secondary">
+            Shared with you ({shared.length})
+          </h2>
+          <TabList
+            tabs={shared.map((tab) => ({
+              ...tab,
+              sharedBy: tab.ownerName,
+              accessLabel: tab.role === "editor" ? "Can edit" : "View only",
+            }))}
+            label="Tabs shared with you"
+          />
         </section>
       )}
 

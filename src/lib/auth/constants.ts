@@ -17,6 +17,13 @@ export const REGISTER_PATH = "/register";
 /** Pages reachable without a session. */
 export const PUBLIC_PATHS: ReadonlySet<string> = new Set([LOGIN_PATH, REGISTER_PATH]);
 
+/**
+ * File downloads (share image, CSV). Without a session they answer 404 from
+ * the route itself instead of being redirected to the sign-in page, which a
+ * script fetching an image can't use.
+ */
+export const EXPORT_PATH_PATTERN = /^\/tabs\/[^/]+\/settlements\/(?:image|csv)$/;
+
 export function sessionCookieName(isHttps: boolean): string {
   return isHttps ? SESSION_COOKIE_SECURE : SESSION_COOKIE_PLAIN;
 }

@@ -27,20 +27,25 @@ export function PeoplePanel(props: { tabId: string; people: PersonSummary[]; rea
   );
 }
 
-/** Fast entry: type a name, press Enter, keep typing the next one. */
+/**
+ * Fast entry: type a name, press Enter, keep typing the next one. The input
+ * is uncontrolled so a name typed before hydration isn't reset to "".
+ */
 function AddPersonForm({ tabId }: { tabId: string }) {
-  const [name, setName] = useState("");
   const [failure, setFailure] = useState<ActionFailure | null>(null);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const input = inputRef.current;
+    const name = input?.value ?? "";
     if (!name.trim()) return;
     startTransition(async () => {
       const result = await addPersonAction({ tabId, displayName: name });
       if (result.ok) {
-        setName("");
+        // Clear only if nothing new was typed while saving.
+        if (input && input.value === name) input.value = "";
         setFailure(null);
       } else {
         setFailure(result); // keep the typed name so nothing is lost
@@ -60,8 +65,7 @@ function AddPersonForm({ tabId }: { tabId: string }) {
         <input
           ref={inputRef}
           id="new-person"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
+          name="displayName"
           placeholder="Name, e.g. Bea"
           maxLength={60}
           autoComplete="off"

@@ -45,9 +45,10 @@ pnpm dev                     # http://localhost:3000
 ## Accounts
 
 Anyone who can reach the app can create an account at `/register` (name,
-email, password of at least 12 characters). Each user sees only their own
-tabs. Administrators can also view every user's tabs (read-only) and
-manage accounts under **Admin**. No emails are sent: there is no
+email, password of at least 12 characters). Each user sees their own
+tabs, plus any tabs friends have shared with them. Administrators can
+also view every user's tabs (read-only) and manage accounts under
+**Admin**. No emails are sent: there is no
 verification and no "forgot password"; an administrator sets a new
 password instead.
 
@@ -77,6 +78,40 @@ hour). 20 failures from everyone combined locks all sign-ins briefly.
 Registration has its own limit per device. Waiting it out is the only
 way to unlock.
 
+## Sharing a tab with friends
+
+On a tab's **Overview**, the owner can share the tab with anyone who has
+an account. They type the friend's email and choose an access level:
+
+-   **Can view:** the friend sees everything (people, transactions,
+    settlements, exports) but changes nothing.
+-   **Can edit:** the friend can also add and change people,
+    transactions, payments and splits.
+
+Only the owner can rename or archive the tab, change someone's access,
+or stop sharing. Changes take effect right away. The friend finds the
+tab under **Shared with you** on their tab list, and can remove it from
+their list ("Remove from my tabs"). The friend needs an account first:
+no emails are sent, so tell them yourself.
+
+## Sharing a summary
+
+On a tab's **Settlements** section:
+
+-   **Share image** makes a PNG of who pays whom and each person's net,
+    for group chats. On a phone over HTTPS it opens the share sheet. Over
+    plain HTTP (a LAN address) phones can't share files from a web page,
+    so it downloads the image instead: on iPhone, open it from Downloads
+    and share from there.
+-   **Print or save PDF** prints every pair with its transactions. In the
+    print dialog, choose "Save as PDF". On iPhone, use Share → Print, then
+    pinch out on the preview to get a PDF.
+-   **Download CSV** gives every transaction and each pair's balance, for
+    spreadsheets.
+-   **Copy summary** copies the same summary as plain text.
+
+Anyone who can see the tab can use all four.
+
 ## Open it on your phone
 
 `pnpm dev` and `pnpm start` both listen on every network interface. To
@@ -101,10 +136,14 @@ tunnel or another hostname, set `DEV_ALLOWED_ORIGINS` (dev assets) and
 | `pnpm build` / `pnpm start` | Production build and server, reachable on the LAN |
 | `pnpm db:local` | Persistent local MongoDB for development |
 | `pnpm create-admin` | Creates or promotes an administrator and claims tabs made before accounts |
+| `pnpm backup` | Saves users, tabs, people and transactions to `.data/backups/utang-club-<date>/` |
+| `pnpm restore <folder>` | Restores a backup into an **empty** database (refuses otherwise) |
 | `pnpm typecheck` | Generates route types, then runs `tsc` |
 | `pnpm lint` | ESLint |
 | `pnpm test` | Vitest (unit tests and in-memory MongoDB tests) |
 | `pnpm check` | Typecheck, lint and tests together |
+| `pnpm e2e` | Playwright touch and device suite against a production build (see `TESTING.md`) |
+| `pnpm e2e:dev` | The same suite against the dev server |
 
 ## Environment
 

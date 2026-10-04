@@ -182,15 +182,15 @@ use that one or stop it first.
 4. The first time, Windows Firewall asks whether to allow Node.js. Allow
    it on **private networks only**.
 
-The sign-in page shows a note that the connection isn't encrypted. On
-your own Wi-Fi that's expected. Don't expose the app to the internet
-without HTTPS in front of it (for example a Cloudflare Tunnel or
-Tailscale).
+Over `http://` the connection isn't encrypted. On your own Wi-Fi
+that's expected. Don't expose the app to the internet without HTTPS in
+front of it (for example a Cloudflare Tunnel or Tailscale).
 
 ## 8. Add users
 
 - **Anyone who can reach the app** can create an account with **Create
-  an account** on the sign-in page. Each user sees only their own tabs.
+  an account** on the sign-in page. Each user sees their own tabs, and
+  any tab its owner shared with them (Overview → Sharing, view or edit).
 - **Administrators** see an **Admin** item in the top bar. From there
   they can open any user to view their tabs (read-only), disable or
   enable the account, make them an administrator, or set a new password.
@@ -208,6 +208,18 @@ This runs the type checker, the linter and all automated tests. The
 database tests start their own temporary MongoDB, so they don't touch
 your data.
 
+To also run the browser suite (phones and desktop, by touch):
+
+```sh
+pnpm e2e
+```
+
+It builds the app into `.next-e2e` and runs it on port 3217 with its own
+throwaway database, so it can run while your `pnpm dev` is up. It needs
+Microsoft Edge on Windows on ARM (Playwright's own Chromium is x64 only)
+and Playwright's WebKit. If WebKit is missing, run
+`pnpm exec playwright install webkit`.
+
 ## Day-to-day
 
 After the first setup, starting the app is two terminals:
@@ -220,9 +232,30 @@ pnpm dev          # terminal 2
 To stop, press **Ctrl+C** in each terminal. Your data stays in
 `.data/mongo`.
 
-**Back up your data** by stopping `pnpm db:local` and copying the
-`.data/mongo` folder somewhere safe. Restore by putting it back while
-the database is stopped.
+**Back up your data** while the database is running:
+
+```sh
+pnpm backup
+```
+
+This writes users, tabs, people and transactions to a dated folder such
+as `.data/backups/utang-club-2026-10-04T12-30-05`. Copy that folder
+somewhere safe (another drive, cloud storage). It contains password
+hashes, so keep it private. Sign-in sessions aren't backed up; everyone
+signs in again after a restore.
+
+**To restore**, start from an empty database (see *Starting fresh*
+below), start `pnpm db:local`, then:
+
+```sh
+pnpm restore .data/backups/utang-club-2026-10-04T12-30-05
+```
+
+Restore refuses to run if the database already has data, so it can
+never overwrite or mix with what's there.
+
+Copying the `.data/mongo` folder while `pnpm db:local` is stopped
+also works as a full backup.
 
 ## Troubleshooting
 

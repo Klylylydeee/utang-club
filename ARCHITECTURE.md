@@ -30,6 +30,26 @@ failures (not found, conflict, read-only, in use), which the wrapper maps
 to a result. Anything else is logged on the server and reported
 generically.
 
+### Exports (route handlers)
+
+Exports are the only route handlers, since a file download can't come
+from a Server Action. They sit next to the Settlements page:
+
+-   `tabs/[tabId]/settlements/image` returns a PNG built with
+    `ImageResponse` (`next/og`) and Geist from `src/assets/fonts`.
+-   `tabs/[tabId]/settlements/csv` returns the CSV.
+
+Route handlers don't run the `(app)` layout. Each one calls
+`loadExportForRequest` (`src/lib/settlements/exportRequest.ts`), which
+checks the session and then calls `getSettlementExport`, so access is
+enforced as usual. A malformed id, no session, or a tab you may not see
+all answer 404, with `Cache-Control: private, no-store`. The proxy
+doesn't redirect these paths to sign-in (`EXPORT_PATH_PATTERN`), so a
+script fetching the image gets the 404 instead of an HTML page. The
+formatting is pure and unit-tested: `buildShareModel` and
+`buildSettlementCsv`. Print / Save as PDF is only a print stylesheet
+(`globals.css`) plus `PrintButton`.
+
 ### Accounts and access
 
 Users register at `/register` and sign in at `/login` with email and
@@ -52,9 +72,20 @@ check happens in two layers:
 
 Authorization is a third layer, inside the services: `authedAction`
 passes an `Actor` (user id and role) to every service, and every
-service checks access to the tab itself. Owners read and write their
-tabs; admins read any tab but write only their own; anyone else gets
-"not found". `tests/db/access.test.ts` covers this for every service.
+service checks access to the tab itself, through three loaders in
+`src/lib/tabs/tabService.ts`:
+
+| Loader | Who passes | Used for |
+|--------|-----------|----------|
+| `loadReadableTab` | owner, editor, viewer, admin | every read, exports |
+| `loadWritableTab` | owner, editor; active tabs only | people, transactions, payments, splits |
+| `loadOwnedTab` | owner | rename, archive, sharing |
+
+Editors and viewers come from `TabShare` (D19): the owner shares a tab
+with an existing account by email. A share outranks the admin role, so
+an admin a tab is shared with as an editor can edit that tab. Anyone else
+gets "not found". `tests/db/access.test.ts` covers this for every
+service and every access level.
 
 Sessions, the throttle and the CSP live in `src/lib/auth/` and
 `src/lib/security/`; accounts in `src/lib/users/`.
@@ -117,6 +148,12 @@ for responsive editing, but failed writes must roll back visibly.
 
 ## Error handling
 
+-   Unexpected errors: `(app)/error.tsx` (the app bar stays) and
+    `global-error.tsx`. A tab you may not see renders `(app)/not-found.tsx`
+    with HTTP 404.
+-   Loading skeletons live only in `tabs/[tabId]/loading.tsx`. A
+    `loading.tsx` higher up would start streaming before the tab's
+    access check, and a 404 would then go out as 200.
 -   Validation errors: inline, field-specific.
 -   Database/network errors: clear non-destructive message.
 -   Never silently discard unsaved transaction edits.

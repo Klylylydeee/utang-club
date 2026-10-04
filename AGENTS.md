@@ -207,10 +207,17 @@ explicitly requested.
 
 **Exception (owner requests, 2026-10-03 and 2026-10-04, PHASING.md
 D11–D17):** the app has user accounts with open registration (email and
-password), database-backed sessions, and two roles. A `user` sees only
-their own tabs; an `admin` can view every tab (read-only) and manage
-users. Keep this, but do not add OAuth, email sending (verification or
-reset), shared tabs between users, or more roles unless asked.
+password), database-backed sessions, and two roles. A `user` sees
+their own tabs and tabs shared with them; an `admin` can view every tab
+(read-only) and manage users. Keep this, but do not add OAuth, email
+sending (verification or reset), or more roles unless asked.
+
+**Shared tabs (owner request, 2026-10-04, PHASING.md D19):** an owner
+shares a tab with another account by email, choosing `viewer` or
+`editor` (`TabShare`). Editors change what's inside a tab
+(`loadWritableTab`); renaming, archiving and sharing stay with the owner
+(`loadOwnedTab`). Don't add share links, pending invites for emails
+without an account, or re-sharing unless asked.
 
 Every domain service takes an `Actor` (`src/lib/auth/actor.ts`) and
 checks access itself (`loadReadableTab`, `loadOwnedTab`,

@@ -9,21 +9,33 @@ import type { TabDetail } from "./types";
 
 export type LoadedTab = TabDetail & {
   actor: Actor;
-  /** Owner of an active tab. Admins viewing someone else's tab, and archived tabs, are read-only. */
+  /**
+   * May change what's inside: the owner or an editor (D19), on an active
+   * tab. Viewers, admins viewing someone else's tab, and archived tabs are
+   * read-only.
+   */
   canEdit: boolean;
+  /** Renames, archives and shares the tab: the owner only. */
+  isOwner: boolean;
 };
 
 /**
- * Loads a tab for a page or layout, once per request (React cache), for the
- * signed-in user. Malformed ids, unknown tabs and tabs the user may not
- * see all render the same 404.
+ * Loads a tab for the signed-in user, once per request (React cache), or
+ * null for a malformed id, an unknown tab, or a tab the user may not see.
+ * For metadata, which must not throw notFound() (the 404 page then has no title).
  */
-export const loadTabOr404 = cache(async (tabId: string): Promise<LoadedTab> => {
+export const findTab = cache(async (tabId: string): Promise<LoadedTab | null> => {
   const parsed = objectIdSchema.safeParse(tabId);
-  if (!parsed.success) notFound();
+  if (!parsed.success) return null;
   const { user } = await requireSession();
   const actor = actorFrom(user);
   const detail = await getTabDetail(parsed.data, actor);
-  if (!detail) notFound();
-  return { ...detail, actor, canEdit: detail.access === "owner" && detail.tab.status === "active" };
+  if (!detail) return null;
+  const writer = detail.access === "owner" || detail.access === "editor";
+  return { ...detail, actor, canEdit: writer && detail.tab.status === "active", isOwner: detail.access === "owner" };
 });
+
+/** For pages and layouts: every "no" in findTab renders the same 404. */
+export async function loadTabOr404(tabId: string): Promise<LoadedTab> {
+  return (await findTab(tabId)) ?? notFound();
+}

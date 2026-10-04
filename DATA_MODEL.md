@@ -77,6 +77,25 @@ interface Transaction {
 }
 ```
 
+## TabShare
+
+Added 2026-10-04 (PHASING.md D19). A tab shared with another account.
+
+``` ts
+interface TabShare {
+  _id: ObjectId;
+  tabId: ObjectId;              // Tab
+  userId: ObjectId;             // User it is shared with (never the owner)
+  role: "viewer" | "editor";    // view only, or change what's inside
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+Indexes: `{ tabId: 1, userId: 1 }` unique, `{ userId: 1 }` (tabs
+shared with me). Shares point at user ids, so renaming an account keeps
+its access. At most 50 per tab.
+
 ## Session
 
 Server-side login session (PHASING.md D12). The cookie holds only a

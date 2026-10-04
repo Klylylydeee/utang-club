@@ -76,6 +76,45 @@ See `UI_SPEC.md` → *Mobile and external-device access*.
 
 ### Automated (Playwright)
 
+The suite lives in `e2e/` and runs with `pnpm e2e` (production build)
+or `pnpm e2e:dev` (dev server). `e2e/serve.mjs` starts a throwaway
+in-memory MongoDB with three seeded accounts (an admin, Bea and Dave)
+and runs Next.js from `.next-e2e` on port 3217. Every run starts empty,
+so the registration limit never trips, and your own data and
+`pnpm dev` are never touched. Projects: `iphone` (WebKit), `pixel`
+and `desktop` (Edge on Windows on ARM, otherwise Playwright's Chromium).
+
+What it covers:
+
+-   **Accounts:** sign-in, register, sign-out, session kept over HTTP.
+-   **Acceptance:** the manual acceptance flow below, by tapping.
+-   **Exports:** the share image downloads over HTTP. Image and CSV give
+    200 to the owner and an admin, and 404 to another user, to a
+    signed-out request and to a malformed id. The print layout hides
+    the app chrome and opens every card.
+-   **Layout:** no stray scrollbars in the section navigation.
+-   **Admin:** an admin's view is read-only.
+-   **Sharing:** the owner shares by email, view only, then edit. The
+    friend finds the tab under "Shared with you", can't change it while
+    view only, and can add a row once given edit access. The friend
+    leaves, and the tab answers 404 for them.
+-   **Accessibility:** axe WCAG 2.2 AA checks of every main screen and
+    the payment sheet.
+-   **Not found:** a tab you may not see answers 404 with a title.
+
+Every test fails on a console error, an uncaught page error or a CSP
+violation. Two known pieces of WebKit noise are allowed (see
+`BENIGN_CONSOLE` in `e2e/support.ts`). `expectTouchFriendly` is the
+touch audit described below. It checks the controls that are on screen
+now, skipping disabled controls, closed `<details>` and anything outside
+an open dialog.
+
+Writing tests: wait for page content, not the `load` event (WebKit fires
+none for in-app navigation). Use `addTransaction`, which picks the
+desktop table or the phone sheet to match the viewport.
+
+Requirements:
+
 -   Run under both `pnpm dev` and `pnpm build && pnpm start`.
 -   Point `baseURL` at the machine's **LAN IP**, not `localhost`. This
     catches `allowedDevOrigins`, CSP and cookie problems.

@@ -34,6 +34,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // The Playwright suite builds into its own folder (e2e/serve.mjs), so it
+  // never disturbs a running `pnpm dev` or the normal build.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   allowedDevOrigins: [...lanHostnames(), ...listFromEnv(process.env.DEV_ALLOWED_ORIGINS)],
   experimental: {

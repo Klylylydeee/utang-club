@@ -7,15 +7,20 @@ import { ActionMessage } from "@/components/ui/ActionMessage";
 import { buttonStyles, inputStyles } from "@/components/ui/styles";
 import type { ActionFailure } from "@/lib/actions/result";
 
+/**
+ * The inputs are uncontrolled and read at submit, so anything typed before
+ * the page hydrates (a slow phone) is kept instead of being reset to "".
+ */
 export function NewTabForm() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [failure, setFailure] = useState<ActionFailure | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get("name") ?? "");
+    const description = String(form.get("description") ?? "");
     startTransition(async () => {
       const result = await createTabAction({ name, description });
       if (result.ok) {
@@ -36,8 +41,7 @@ export function NewTabForm() {
         </label>
         <input
           id="tab-name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
+          name="name"
           maxLength={80}
           placeholder="e.g. Japan trip, Friday inuman, Bea’s birthday dinner"
           required
@@ -59,8 +63,7 @@ export function NewTabForm() {
         </label>
         <input
           id="tab-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
+          name="description"
           maxLength={500}
           placeholder="e.g. Osaka and Kyoto, 12–18 March"
           className={inputStyles}

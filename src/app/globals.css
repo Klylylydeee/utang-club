@@ -144,3 +144,42 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Print / Save as PDF (Settlements). Black on white whatever the theme; no
+ * app chrome, navigation or buttons; cards are opened by PrintButton before
+ * printing, and a pair never splits across pages.
+ */
+@media print {
+  :root {
+    color-scheme: light;
+    --surface: #ffffff;
+    --surface-raised: #ffffff;
+    --ink: #000000;
+    --ink-secondary: #3f3f46;
+    --separator: rgb(0 0 0 / 0.25);
+    --accent: #000000;
+    --positive: #000000;
+    --positive-soft: transparent;
+    --accent-soft: transparent;
+    --shadow-raised: none;
+  }
+
+  body > header,
+  nav,
+  button,
+  summary svg,
+  [role="status"] {
+    display: none !important;
+  }
+
+  main {
+    max-width: none;
+    padding: 0;
+  }
+
+  article,
+  li {
+    break-inside: avoid;
+  }
+}

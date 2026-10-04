@@ -34,6 +34,7 @@ the phase that depends on them starts.
 | D16 | Registration | Open: anyone who can reach the app can register a regular account. Throttled per device. | 9 |
 | D17 | Roles | `user` sees only their own tabs. `admin` can view every tab (read-only) and manage users (disable, role, set password), but can't change their own account. | 9 |
 | D18 | Visual direction | An enterprise look everywhere, overriding "not like a bank or enterprise product" in AGENTS.md: navy app bar, slate neutrals, hairlines, 10/8px radii, breadcrumbs, admin tables. | 9 |
+| D19 | Shared tabs | An owner shares a tab with an existing account by email, as `viewer` (read-only) or `editor` (may change people, transactions, payments and splits). Only the owner renames, archives or manages sharing. No pending invites for emails without an account, because there's no email verification. Overrides "no shared tabs" in AGENTS.md. | 10 |
 | D14 | External-device access | Everything must work by touch from phones and LAN devices, in dev and production builds, over HTTP or HTTPS (`UI_SPEC.md` → *Mobile and external-device access*). Settings that depend on the transport (cookie `Secure`/`__Host-`, HSTS, `upgrade-insecure-requests`) follow the protocol of the actual request, not `NODE_ENV`. | 1, 3, 4--8 |
 
 ## Phase 0 --- Repository setup
@@ -338,7 +339,7 @@ Scope:
 **Exit:** acceptance criterion 5 holds. The manual acceptance flow in
 `TESTING.md` passes from start to finish (after logging in).
 
-## Phase 8 --- Hardening (PLAN Milestone 7)
+## Phase 8 --- Hardening (PLAN Milestone 7) --- ✅ done 2026-10-04
 
 Scope:
 
@@ -554,3 +555,84 @@ Record changes to D1--D13 and any new decisions here, with dates.
     -   Known limitation: open registration means anyone on the network
         can create an account. Use an invite code (not built) if the app
         is ever exposed beyond people you trust.
+-   2026-10-04 --- **Export a summary** (PLAN milestone 6c, recommended
+    in HANDOFF.md; the owner said to proceed). Notes:
+    -   **Share image:** a PNG from `ImageResponse` showing the outstanding
+        pairs, each person's net, and the number of settled pairs. Line
+        items and settled pairs are left out. These were the HANDOFF
+        defaults and the owner still has to confirm them; changing them
+        means editing `buildShareModel`. Long lists are capped at 20 lines
+        plus "and N more". Fonts are Geist Regular and SemiBold (OFL),
+        committed under `src/assets/fonts`.
+    -   Safari loses the tap's permission to share while the image loads.
+        When that happens the button turns into "Tap to share image", and
+        a second tap shares it.
+    -   **Print / Save as PDF:** a print stylesheet plus `PrintButton`. On
+        `beforeprint` every `<details>` opens, and on `afterprint` they
+        close again. A second `beforeprint` adds to the list of opened
+        cards rather than replacing it.
+    -   **CSV:** RFC 4180 quoting with a UTF-8 byte-order mark (so Excel
+        shows ₱). Text starting with `= + - @`, a tab or a carriage
+        return gets a leading `'`. An undated row uses its Manila
+        creation date.
+    -   **Access:** both the owner and admins can export (read-only). The
+        routes return 404 for everything else, and the proxy doesn't
+        redirect them to sign-in.
+-   2026-10-04 --- Phase 8 complete. Notes:
+    -   **Playwright suite** in `e2e/`, built from the throwaway session
+        scripts (see `TESTING.md`). It passes 39/39 on the production
+        build and 39/39 on the dev server, on the LAN IP, in iPhone
+        (WebKit), Pixel and desktop (Edge). `next.config.ts` takes
+        `NEXT_DIST_DIR` so the suite builds into `.next-e2e` beside a
+        running `pnpm dev`. `pnpm-workspace.yaml` turns on
+        `shellEmulator` so `E2E_MODE=dev` works in scripts on Windows.
+    -   **Bugs the suite found:**
+        -   New tab and "Add a person" reset text typed before hydration,
+            so WebKit submitted an empty name. Both inputs are now
+            uncontrolled and read at submit.
+        -   A tab's `generateMetadata` threw `notFound()`, which left the
+            404 page with no `<title>`; it now uses `findTab`.
+        -   The section nav's active underline overflowed the nav, which
+            then showed a vertical scrollbar (reported by the owner). The
+            rule and the underline are now inside the scroll box, and its
+            scrollbar is hidden.
+    -   **Error and loading states:** `(app)/error.tsx`,
+        `global-error.tsx`, `not-found.tsx` (root and `(app)`), and
+        `tabs/[tabId]/loading.tsx`. There's no `loading.tsx` higher up,
+        because it would turn a hidden tab's 404 into a 200.
+    -   **Accessibility:** axe (WCAG 2.2 AA) finds nothing on sign-in,
+        register, the tab list, new tab, overview, transactions,
+        settlements, the payment sheet or not found.
+    -   **Backups:** `pnpm backup` and `pnpm restore` write and read
+        Extended JSON per collection. Restore only goes into an empty
+        database.
+    -   **`pnpm audit`:** one high advisory, in `braces`, reached through
+        `eslint-config-next`. It's a lint-time dev dependency only, with
+        no patched version yet. The app itself has no known issues.
+    -   **Still manual:** a real iPhone and Android phone on the LAN
+        (TESTING.md → Manual), especially the phone sheet with the
+        on-screen keyboard open.
+-   2026-10-04 --- Owner removed the sign-in page's "This connection
+    isn't encrypted" notice (Phase 3 had added it for HTTP), and added a
+    "Created by cly_gvr32" line to the sign-in and registration pages.
+-   2026-10-04 --- **Shared tabs (D19)**, PLAN milestone 10. The owner
+    first asked for view-only sharing, then for "view or edit, based on
+    the capability the user approved". Notes:
+    -   `accessTo` now returns `owner | editor | viewer | admin`.
+        `loadWritableTab` accepts owners and editors. `loadOwnedTab`
+        (rename, archive, sharing) stays owner-only, so no other service
+        had to change. A share outranks the admin role.
+    -   The owner sees the friend's name after sharing, to catch a wrong
+        email. An unknown email and a disabled account get the same
+        message.
+    -   Viewers and editors see a banner ("Bea shared this tab with you")
+        with "Remove from my tabs". Leaving redirects from the Server
+        Action itself: a client `router.push` raced the refresh of a
+        page the user could no longer see, and lost on WebKit.
+    -   The tab list has a "Shared with you" group showing the owner and
+        a "View only" or "Can edit" badge.
+    -   `pnpm backup` includes `tabshares`. Restoring an older backup
+        without that file still works.
+    -   Known limitation: there's no record of who added or changed a
+        row. With editors this matters more (see HANDOFF → loose ends).
+

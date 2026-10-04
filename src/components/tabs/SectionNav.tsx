@@ -17,8 +17,14 @@ export function SectionNav({ tabId }: { tabId: string }) {
   ];
 
   return (
-    <nav aria-label="Tab sections" className="-mt-px overflow-x-auto border-b border-separator">
-      <ul className="flex gap-1">
+    // The rule and the underline both sit inside the scroll box: anything
+    // poking out below it would give the nav its own vertical scrollbar.
+    // It still scrolls sideways on narrow phones, with the bar hidden.
+    <nav
+      aria-label="Tab sections"
+      className="-mt-px overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      <ul className="flex w-max min-w-full gap-1 shadow-[inset_0_-1px_0_var(--separator)]">
         {sections.map((section) => {
           const current = pathname === section.href;
           return (
@@ -31,7 +37,7 @@ export function SectionNav({ tabId }: { tabId: string }) {
                 }`}
               >
                 {section.label}
-                {current && <span aria-hidden="true" className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-accent" />}
+                {current && <span aria-hidden="true" className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-accent" />}
               </Link>
             </li>
           );

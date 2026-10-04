@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthLayout } from "@/components/shell/AuthLayout";
-import { authIsConfigured, InsecureNotice, SetupNotice } from "@/components/shell/AuthNotices";
+import { authIsConfigured, SetupNotice } from "@/components/shell/AuthNotices";
 import { REGISTER_PATH } from "@/lib/auth/constants";
 import { safeNextPath } from "@/lib/auth/redirect";
-import { getRequestContext } from "@/lib/auth/requestContext";
 import { getSession } from "@/lib/auth/session";
 import { LoginForm } from "./LoginForm";
 
@@ -15,7 +14,6 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const next = safeNextPath((await searchParams).next);
   const configured = authIsConfigured();
   if (configured && (await getSession())) redirect(next);
-  const { isHttps } = await getRequestContext();
 
   return (
     <AuthLayout
@@ -29,7 +27,6 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
               Create an account
             </Link>
           </p>
-          {!isHttps && <InsecureNotice />}
         </>
       }
     >

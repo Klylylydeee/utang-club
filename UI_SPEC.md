@@ -119,7 +119,7 @@ known causes in this stack, and what we do about each:
 | Server only listening on localhost | The `dev` and `start` scripts bind to `0.0.0.0` (`-H 0.0.0.0`). |
 | The CSP blocks dev scripts or the hot-reload websocket | The dev CSP adds `'unsafe-eval'` and `ws:`/`wss:` to `connect-src`. The production CSP stays strict. |
 | `upgrade-insecure-requests` or HSTS sent over plain HTTP | Both are sent only when the request actually came over HTTPS, never just because it's a production build. |
-| A `Secure` / `__Host-` session cookie is silently dropped over `http://` LAN, so login appears to "do nothing" | The cookie's `Secure` flag and `__Host-` prefix depend on the protocol of the actual request (taking `x-forwarded-proto` into account), not on `NODE_ENV`. When served over HTTP, the login page shows a "not a secure connection" notice. |
+| A `Secure` / `__Host-` session cookie is silently dropped over `http://` LAN, so login appears to "do nothing" | The cookie's `Secure` flag and `__Host-` prefix depend on the protocol of the actual request (taking `x-forwarded-proto` into account), not on `NODE_ENV`. (The sign-in page used to show a "not a secure connection" notice over HTTP; the owner removed it on 2026-10-04.) |
 | The Server Action origin check rejects requests from tunnels or proxies | `serverActions.allowedOrigins` is read from the env setting `ACTION_ALLOWED_ORIGINS`, which is empty by default. A direct LAN IP needs nothing, because Origin and Host already match. |
 
 ### Touch interaction rules

@@ -19,5 +19,5 @@ export async function createTestUser(role: UserRole = "user", name?: string) {
     role,
   });
   const actor: Actor = { userId: user._id.toString(), role };
-  return { ...actor, actor, id: actor.userId, passwordHash };
+  return { ...actor, actor, id: actor.userId, email: user.email, passwordHash };
 }

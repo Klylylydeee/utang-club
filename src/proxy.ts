@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { LOGIN_PATH, PUBLIC_PATHS, SESSION_COOKIE_PLAIN, SESSION_COOKIE_SECURE } from "@/lib/auth/constants";
+import { EXPORT_PATH_PATTERN, LOGIN_PATH, PUBLIC_PATHS, SESSION_COOKIE_PLAIN, SESSION_COOKIE_SECURE } from "@/lib/auth/constants";
 import { isHttpsRequest } from "@/lib/auth/transport";
 import { buildContentSecurityPolicy, HSTS_VALUE } from "@/lib/security/csp";
 
@@ -18,7 +18,12 @@ export function proxy(request: NextRequest) {
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE_SECURE) || request.cookies.has(SESSION_COOKIE_PLAIN);
   // Only redirect page navigations; Server Action POSTs get a structured
   // "unauthenticated" result from authedAction instead.
-  if (!hasSessionCookie && !PUBLIC_PATHS.has(pathname) && request.method === "GET") {
+  if (
+    !hasSessionCookie &&
+    !PUBLIC_PATHS.has(pathname) &&
+    !EXPORT_PATH_PATTERN.test(pathname) &&
+    request.method === "GET"
+  ) {
     const loginUrl = new URL(LOGIN_PATH, request.url);
     if (pathname !== "/") loginUrl.searchParams.set("next", `${pathname}${search}`);
     return withTransportHeaders(NextResponse.redirect(loginUrl), isHttps);

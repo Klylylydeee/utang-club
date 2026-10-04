@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CopySummaryButton } from "@/components/settlements/CopySummaryButton";
 import { PersonTotalsList } from "@/components/settlements/PersonTotalsList";
+import { PrintButton } from "@/components/settlements/PrintButton";
 import { SettlementCardView } from "@/components/settlements/SettlementCardView";
+import { ShareImageButton } from "@/components/settlements/ShareImageButton";
 import { buttonStyles, cardStyles } from "@/components/ui/styles";
+import { formatLongDate } from "@/lib/dates";
 import { getSettlements } from "@/lib/settlements/settlementService";
 import { buildSummaryText } from "@/lib/settlements/summaryText";
 import { loadTabOr404 } from "@/lib/tabs/loadTab";
@@ -43,9 +46,19 @@ export default async function SettlementsPage({ params }: PageProps<"/tabs/[tabI
             <h2 id="outstanding-heading" className="text-lg font-semibold">
               Who pays whom
             </h2>
-            <p className="text-sm text-ink-secondary">Tap a card to see the transactions behind it.</p>
+            <p className="text-sm text-ink-secondary print:hidden">Tap a card to see the transactions behind it.</p>
+            <p className="hidden text-sm text-ink-secondary print:block">
+              As of {formatLongDate(new Date())} · Utang Club
+            </p>
           </div>
-          <CopySummaryButton text={buildSummaryText(tab.name, summary)} />
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <CopySummaryButton text={buildSummaryText(tab.name, summary)} />
+            <ShareImageButton tabId={tab.id} tabName={tab.name} />
+            <PrintButton />
+            <a href={`/tabs/${tab.id}/settlements/csv`} download className={buttonStyles.quiet}>
+              Download CSV
+            </a>
+          </div>
         </div>
         {outstanding.length === 0 ? (
           <p className={`${cardStyles} px-5 py-8 text-center text-ink-secondary`}>

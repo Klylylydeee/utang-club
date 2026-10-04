@@ -12,15 +12,6 @@ export function authIsConfigured(): boolean {
   }
 }
 
-export function InsecureNotice() {
-  return (
-    <p className="flex gap-2 rounded-lg border border-separator bg-raised px-3 py-2.5 text-[13px] text-ink-secondary" role="note">
-      <span aria-hidden="true">⚠︎</span>
-      This connection isn’t encrypted. Only sign in on a network you trust.
-    </p>
-  );
-}
-
 export function SetupNotice() {
   return (
     <div role="alert" className="space-y-2 rounded-lg border border-separator bg-raised p-4 text-[15px]">
