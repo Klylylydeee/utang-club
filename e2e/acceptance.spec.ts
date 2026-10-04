@@ -58,4 +58,6 @@ test("manual acceptance flow", async ({ page }, testInfo) => {
   // History is kept: both expenses and the payment are still listed after the pair settles.
   await page.goto(`${tab}/transactions`);
   await expect(transactionRows(page)).toHaveCount(3);
+  // A tab only its owner uses carries no "Added by" lines.
+  await expect(page.getByText(/^Added by/)).toHaveCount(0);
 });

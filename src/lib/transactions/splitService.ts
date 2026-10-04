@@ -57,6 +57,7 @@ export async function splitExpense(input: SplitExpenseInput, actor: Actor): Prom
       recipientId: new Types.ObjectId(input.payerId),
       transactionDate: input.transactionDate ? new Date(`${input.transactionDate}T00:00:00.000Z`) : undefined,
       notes: note.slice(0, 1000),
+      createdBy: new Types.ObjectId(actor.userId),
     })),
   );
   await touchTab(tab._id);

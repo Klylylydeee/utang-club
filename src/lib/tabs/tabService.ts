@@ -53,8 +53,9 @@ function toSummary(tab: TabDoc, participantCount: number, transactionCount: numb
 }
 
 async function countByTab(model: typeof Person | typeof Transaction, tabIds: Types.ObjectId[]) {
+  // Deleted transactions don't count (people have no deletedAt, so this matches them all).
   const rows = await (model as typeof Person).aggregate<{ _id: Types.ObjectId; count: number }>([
-    { $match: { tabId: { $in: tabIds } } },
+    { $match: { tabId: { $in: tabIds }, deletedAt: null } },
     { $group: { _id: "$tabId", count: { $sum: 1 } } },
   ]);
   return new Map(rows.map((row) => [row._id.toString(), row.count]));
@@ -113,15 +114,16 @@ export async function getTabDetail(tabId: string, actor: Actor): Promise<TabDeta
   const access = tab ? await accessTo(tab, actor) : null;
   if (!tab || !access) return null;
 
-  const [people, involvement, transactionCount] = await Promise.all([
+  const [people, involvement, transactionCount, shared] = await Promise.all([
     Person.find({ tabId: id }).sort({ createdAt: 1 }).lean(),
     Transaction.aggregate<{ _id: Types.ObjectId; count: number }>([
-      { $match: { tabId: id } },
+      { $match: { tabId: id, deletedAt: null } },
       { $project: { person: ["$payerId", "$recipientId"] } },
       { $unwind: "$person" },
       { $group: { _id: "$person", count: { $sum: 1 } } },
     ]),
-    Transaction.countDocuments({ tabId: id }),
+    Transaction.countDocuments({ tabId: id, deletedAt: null }),
+    TabShare.exists({ tabId: id }),
   ]);
   const counts = new Map(involvement.map((row) => [row._id.toString(), row.count]));
 
@@ -139,6 +141,7 @@ export async function getTabDetail(tabId: string, actor: Actor): Promise<TabDeta
     access,
     ownerName: owner?.name ?? null,
     ownerId: access === "admin" && tab.ownerId ? tab.ownerId.toString() : null,
+    isShared: shared !== null,
   };
 }
 
@@ -208,11 +211,18 @@ export async function deletePerson(input: PersonDelete, actor: Actor): Promise<{
   await connectToDatabase();
   const person = await loadPerson(input.personId);
   await loadWritableTab(person.tabId.toString(), actor);
-  const used = await Transaction.exists({ $or: [{ payerId: person._id }, { recipientId: person._id }] });
-  if (used) {
+  // Deleted rows count too: they can be restored, and must not point at a missing person.
+  const involving = { $or: [{ payerId: person._id }, { recipientId: person._id }] };
+  if (await Transaction.exists({ ...involving, deletedAt: null })) {
     throw new DomainError(
       "in-use",
       `${person.displayName} appears in transactions, so they can't be removed. You can still rename them.`,
+    );
+  }
+  if (await Transaction.exists(involving)) {
+    throw new DomainError(
+      "in-use",
+      `${person.displayName} appears in deleted transactions, which can still be restored, so they can't be removed. You can still rename them.`,
     );
   }
   await Person.deleteOne({ _id: person._id });

@@ -6,6 +6,7 @@ import {
   createTransaction,
   deleteTransaction,
   duplicateTransaction,
+  restoreTransaction,
   updateTransaction,
 } from "@/lib/transactions/transactionService";
 import { splitExpense } from "@/lib/transactions/splitService";
@@ -32,6 +33,11 @@ export const updateTransactionAction = authedAction(transactionUpdateSchema, asy
 
 export const deleteTransactionAction = authedAction(transactionRefSchema, async (input, { actor }) => {
   const { tabId } = await deleteTransaction(input, actor);
+  revalidateTab(tabId);
+});
+
+export const restoreTransactionAction = authedAction(transactionRefSchema, async (input, { actor }) => {
+  const { tabId } = await restoreTransaction(input, actor);
   revalidateTab(tabId);
 });
 

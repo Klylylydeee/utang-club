@@ -1,10 +1,12 @@
 import { minorUnitsFor } from "@/lib/currency";
 import { formatForeign, formatPhp } from "@/lib/settlement/money";
+import { describeAuthorship } from "@/lib/transactions/authorship";
 import type { TransactionRow } from "@/lib/transactions/types";
 import type { PersonOption } from "./TransactionRowView";
 
 /** Read-only rows for an archived tab (D6). Server-rendered; no inputs. */
-export function TransactionList({ rows, people }: { rows: TransactionRow[]; people: PersonOption[] }) {
+export function TransactionList(props: { rows: TransactionRow[]; people: PersonOption[]; showAuthors?: boolean }) {
+  const { rows, people } = props;
   const names = new Map(people.map((person) => [person.id, person.displayName]));
   const showForeign = rows.some((row) => row.foreignCurrency !== null);
 
@@ -25,7 +27,12 @@ export function TransactionList({ rows, people }: { rows: TransactionRow[]; peop
         <tbody>
           {rows.map((row) => (
             <tr key={row.id} className="border-b border-separator last:border-b-0">
-              <td className="px-4 py-3 break-words">{row.description}</td>
+              <td className="px-4 py-3 break-words">
+                {row.description}
+                {props.showAuthors && describeAuthorship(row) && (
+                  <span className="mt-0.5 block text-[13px] text-ink-secondary">{describeAuthorship(row)}</span>
+                )}
+              </td>
               {showForeign && (
                 <td className="px-4 py-3 text-right text-ink-secondary tabular-nums">
                   {row.foreignCurrency && row.foreignAmountMinor !== null

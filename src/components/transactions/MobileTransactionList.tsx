@@ -3,9 +3,11 @@
 import { useState, type ReactNode } from "react";
 import { buttonStyles } from "@/components/ui/styles";
 import { Money } from "@/components/ui/Money";
+import { describeAuthorship } from "@/lib/transactions/authorship";
 import type { TransactionRow } from "@/lib/transactions/types";
 import { toRowValues } from "./rowValues";
 import { TransactionSheet, type SheetTarget } from "./TransactionSheet";
+import { UndoDeleteNotice, type DeletedRef } from "./UndoDeleteNotice";
 import type { PersonOption } from "./TransactionRowView";
 
 /**
@@ -17,8 +19,11 @@ export function MobileTransactionList(props: {
   people: PersonOption[];
   rows: TransactionRow[];
   actions?: ReactNode;
+  /** Show who added and changed each row (tabs more than one account uses). */
+  showAuthors?: boolean;
 }) {
   const [target, setTarget] = useState<SheetTarget | null>(null);
+  const [lastDeleted, setLastDeleted] = useState<DeletedRef | null>(null);
   const names = new Map(props.people.map((person) => [person.id, person.displayName]));
 
   return (
@@ -29,6 +34,7 @@ export function MobileTransactionList(props: {
         </button>
         {props.actions}
       </div>
+      <UndoDeleteNotice deleted={lastDeleted} onDone={() => setLastDeleted(null)} />
 
       {props.rows.length === 0 ? (
         <p className="rounded-[10px] border border-dashed border-separator px-4 py-8 text-center text-ink-secondary">
@@ -42,11 +48,12 @@ export function MobileTransactionList(props: {
           {props.rows.map((row) => {
             const payer = names.get(row.payerId) ?? "Unknown";
             const recipient = names.get(row.recipientId) ?? "Unknown";
+            const byline = props.showAuthors ? describeAuthorship(row) : null;
             return (
               <li key={row.id}>
                 <button
                   type="button"
-                  onClick={() => setTarget({ mode: "edit", id: row.id, values: toRowValues(row) })}
+                  onClick={() => setTarget({ mode: "edit", id: row.id, values: toRowValues(row), byline })}
                   className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors active:bg-accent-soft"
                 >
                   <span className="min-w-0">
@@ -61,6 +68,7 @@ export function MobileTransactionList(props: {
                         {payer} {row.type === "payment" ? "paid" : "owes"} {recipient}
                       </span>
                     </span>
+                    {byline && <span className="mt-0.5 block truncate text-[13px] text-ink-secondary">{byline}</span>}
                   </span>
                   <Money centavos={row.amountPhpCentavos} className="shrink-0 font-medium" />
                 </button>
@@ -70,7 +78,13 @@ export function MobileTransactionList(props: {
         </ul>
       )}
 
-      <TransactionSheet tabId={props.tabId} people={props.people} target={target} onClose={() => setTarget(null)} />
+      <TransactionSheet
+        tabId={props.tabId}
+        people={props.people}
+        target={target}
+        onClose={() => setTarget(null)}
+        onDeleted={(id, description) => setLastDeleted({ id, description })}
+      />
     </div>
   );
 }

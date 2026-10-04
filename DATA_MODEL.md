@@ -72,10 +72,27 @@ interface Transaction {
   transactionDate?: Date;
   notes?: string;
 
+  createdBy?: ObjectId;   // User who added the row (absent on rows from before 2026-10-04)
+  updatedBy?: ObjectId;   // User who last changed a field; unset until someone does
+  deletedAt?: Date;       // set when deleted: the row is hidden but kept, and can be restored
+  deletedBy?: ObjectId;   // User who deleted it
+
   createdAt: Date;
   updatedAt: Date;
 }
 ```
+
+`createdBy` is set for every new row: manual entry, duplicate (the
+person duplicating), payment and split. `updatedBy` is set only when an
+edit actually changes a field. Names are resolved when a row is read, so
+a renamed account shows its new name.
+
+**Deleting never removes a document.** It sets `deletedAt` and
+`deletedBy`. Every read, count, settlement and export filters
+`{ deletedAt: null }` (`LIVE` in `transactionService.ts`; `null` also
+matches a missing field). Restoring unsets both, and `updatedBy` stays
+unchanged. A person who appears in any row, deleted or not, can't be
+removed from the tab.
 
 ## TabShare
 

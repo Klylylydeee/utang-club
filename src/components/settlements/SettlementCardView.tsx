@@ -2,6 +2,7 @@ import { Money } from "@/components/ui/Money";
 import { minorUnitsFor } from "@/lib/currency";
 import { formatForeign } from "@/lib/settlement/money";
 import type { SettlementCard, SettlementLine } from "@/lib/settlements/types";
+import { describeAuthorship } from "@/lib/transactions/authorship";
 import { pluralize } from "@/lib/text";
 import { RecordPaymentButton } from "./RecordPaymentButton";
 
@@ -11,7 +12,18 @@ import { RecordPaymentButton } from "./RecordPaymentButton";
  * without JavaScript) to the rows behind it. Outstanding cards sit raised;
  * settled ones lie flat so the open debts stand out.
  */
-export function SettlementCardView({ card, tabId, readOnly }: { card: SettlementCard; tabId: string; readOnly: boolean }) {
+export function SettlementCardView({
+  card,
+  tabId,
+  readOnly,
+  showAuthors = false,
+}: {
+  card: SettlementCard;
+  tabId: string;
+  readOnly: boolean;
+  /** Show who added and changed each line (tabs more than one account uses). */
+  showAuthors?: boolean;
+}) {
   const settled = card.status === "settled";
   const { debtor, creditor } = card;
 
@@ -57,7 +69,7 @@ export function SettlementCardView({ card, tabId, readOnly }: { card: Settlement
         <div className="mx-5 border-t border-separator pb-4">
           <ul aria-label={`Transactions between ${debtor.displayName} and ${creditor.displayName}`}>
             {card.lines.map((line) => (
-              <LineItem key={line.transactionId} line={line} card={card} />
+              <LineItem key={line.transactionId} line={line} card={card} showAuthors={showAuthors} />
             ))}
           </ul>
 
@@ -113,8 +125,9 @@ function describe(line: SettlementLine, card: SettlementCard) {
   return { tag: forward ? null : "Offset", detail: `${from} owes ${to}` };
 }
 
-function LineItem({ line, card }: { line: SettlementLine; card: SettlementCard }) {
+function LineItem({ line, card, showAuthors }: { line: SettlementLine; card: SettlementCard; showAuthors: boolean }) {
   const { tag, detail } = describe(line, card);
+  const byline = showAuthors ? describeAuthorship(line) : null;
   const reduces = line.effectCentavos < 0;
 
   return (
@@ -133,6 +146,7 @@ function LineItem({ line, card }: { line: SettlementLine; card: SettlementCard }
             </>
           )}
         </p>
+        {byline && <p className="mt-0.5 text-[13px] text-ink-secondary">{byline}</p>}
       </div>
       <p className={`shrink-0 ${reduces ? "text-positive" : ""}`}>
         <span className="sr-only">{reduces ? "Reduces the balance:" : "Adds:"} </span>

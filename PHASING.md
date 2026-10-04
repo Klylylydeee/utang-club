@@ -635,4 +635,42 @@ Record changes to D1--D13 and any new decisions here, with dates.
         without that file still works.
     -   Known limitation: there's no record of who added or changed a
         row. With editors this matters more (see HANDOFF → loose ends).
+-   2026-10-04 --- **Who added and changed each transaction** (PLAN
+    milestone 11, recommended after D19). Notes:
+    -   `Transaction.createdBy` and `updatedBy` are User ids. The
+        browser only ever gets `{ name, isYou }` (`AuthorRef`), never
+        an id or email.
+    -   An edit that changes nothing (the table saves when you leave a
+        row) doesn't set `updatedBy`: `sameAsStored` compares every
+        editable field first.
+    -   A duplicate belongs to whoever duplicated it, and split rows to
+        whoever split the bill.
+    -   **When names show:** `shouldShowAuthorship` turns them on when
+        the tab is shared, the viewer isn't the owner, or another account
+        wrote or changed a row. So a tab that was shared and later
+        unshared still explains its rows.
+    -   **Where:** a line under the description (table, phone list,
+        read-only table), the phone sheet's subtitle, and settlement line
+        items. The CSV has "Added by" and "Edited by" columns with real
+        names. The share image leaves them out.
+    -   Rows from before this change show nothing. Deletes are still not
+        recorded; soft delete would cover that.
+-   2026-10-04 --- **Deleted transactions are kept and can be restored**
+    (PLAN milestone 12). Notes:
+    -   `deleteTransaction` sets `deletedAt` and `deletedBy` with
+        `timestamps: false`, so `updatedAt` keeps meaning "last edit".
+        Restore unsets them the same way.
+    -   Every query that reads transactions filters `deletedAt: null`:
+        list, tab and person counts, the settlement engine's input, the
+        payment overpay check, and the exports. Update and duplicate
+        refuse a deleted row ("not found").
+    -   **People:** removing a person is blocked by deleted rows too, with
+        its own message, so a restore never points at a missing person.
+    -   **UI:**
+        -   The table and phone list show "Deleted “Ramen”. Undo", which
+            stays until it's dismissed or replaced.
+        -   "Recently deleted (n)" is a native `<details>` under the
+            transactions, read-only for viewers and admins.
+    -   No purge. Deleted rows stay in the database, and `pnpm backup`
+        keeps them.
 

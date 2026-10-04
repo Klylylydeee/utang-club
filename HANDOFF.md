@@ -20,10 +20,12 @@ loose.
 | 6c | Export: share image (PNG), print / save PDF, CSV | ✅ Done |
 | 8 | Hardening: Playwright suite, error/loading states, a11y, backups | ✅ Done |
 | 10 | Share a tab with a friend's account: view or edit (D19) | ✅ Done |
+| 11 | Who added and changed each transaction | ✅ Done |
+| 12 | Deleted transactions kept: Undo, Recently deleted, Restore | ✅ Done |
 
-- `pnpm check` passes: typecheck, lint and **262 tests in 23 files**.
-- `pnpm e2e` passes **42/42** on the production build, and
-  `pnpm e2e:dev` passes **42/42** on the dev server.
+- `pnpm check` passes: typecheck, lint and **276 tests in 26 files**.
+- `pnpm e2e` passes **45/45** on the production build. The last
+  dev-server run (`pnpm e2e:dev`) was before milestones 11 and 12.
 
 ## What the product is now
 
@@ -117,7 +119,9 @@ nets each pair into "who pays whom", traceable to the rows behind it.
   - the print layout;
   - the section-nav scrollbar regression;
   - the read-only admin view;
-  - sharing as view only, then edit, then leaving;
+  - sharing as view only, then edit, then leaving, with "Added by" names
+    on the shared tab and none on a tab only you use;
+  - delete, Undo, delete again, then Restore from "Recently deleted";
   - axe WCAG 2.2 AA on every main screen;
   - a hidden tab answering 404.
 
@@ -144,10 +148,9 @@ nets each pair into "who pays whom", traceable to the rows behind it.
      explicitly confirmed.
 3. **Local data:** `.data/mongo` holds test tabs from early runs. Back it
    up (`pnpm backup`) or wipe it (`SETUP.md` → *Starting fresh*).
-4. **Who changed what:** rows don't record who added or edited them.
-   With editors that matters more. A `createdBy`/`updatedBy` on
-   transactions, shown on hover or tap, would settle disputes. This is a
-   good next step.
+4. **Deleted rows are never purged.** Deleting hides a row
+   (milestone 12) and keeps it forever. Fine at this scale. Add a purge
+   (say, after 90 days) only if the data grows.
 5. **Hydration race, mostly fixed:** typing before hydration is now kept
    on new tab and add person. Pressing *submit* before scripts load still
    does a plain page reload on forms without a Server Action `action`.

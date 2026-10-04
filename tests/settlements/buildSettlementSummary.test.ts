@@ -33,6 +33,8 @@ function row(
     transactionDate: null,
     notes: null,
     createdAt: new Date(Date.UTC(2026, 9, 1, 0, 0, seq)).toISOString(),
+    addedBy: null,
+    editedBy: null,
     ...extra,
   };
 }

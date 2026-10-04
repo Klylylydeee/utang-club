@@ -28,6 +28,8 @@ function row(payerId: string, recipientId: string, amountPhpCentavos: number, ex
     transactionDate: null,
     notes: null,
     createdAt: new Date(Date.UTC(2026, 9, 1, 0, 0, seq)).toISOString(),
+    addedBy: null,
+    editedBy: null,
     ...extra,
   };
 }
@@ -111,18 +113,26 @@ describe("csvCell", () => {
 describe("buildSettlementCsv", () => {
   it("lists every row with names and exact decimals, then each pair", () => {
     const rows = [
-      row(ADRIAN, KLYDE, 12303, { description: "Mineral Water", foreignCurrency: "USD", foreignAmountMinor: 246, transactionDate: "2026-10-02" }),
+      row(ADRIAN, KLYDE, 12303, {
+        description: "Mineral Water",
+        foreignCurrency: "USD",
+        foreignAmountMinor: 246,
+        transactionDate: "2026-10-02",
+        // The CSV names people even when the reader is the author: no "you".
+        addedBy: { name: "Bea", isYou: true },
+        editedBy: { name: "Dave, Jr.", isYou: false },
+      }),
       row(KLYDE, ADRIAN, 10000, { description: "=cmd", notes: "said \"thanks\"" }),
       row(SIMON, KLYDE, 150000, { description: "Hotel", foreignCurrency: "JPY", foreignAmountMinor: 4000 }),
       row(SIMON, KLYDE, 150000, { type: "payment", description: "GCash" }),
     ];
     const csv = buildSettlementCsv(rows, PEOPLE, buildSettlementSummary(rows, PEOPLE));
     expect(csv.split("\r\n")).toEqual([
-      "Date,Description,Type,To pay,To be paid,Amount (PHP),Foreign currency,Foreign amount,Notes",
-      "2026-10-02,Mineral Water,Expense,Adrian,Klyde,123.03,USD,2.46,",
-      `2026-10-01,'=cmd,Expense,Klyde,Adrian,100.00,,,"said ""thanks"""`,
-      "2026-10-01,Hotel,Expense,Simon,Klyde,1500.00,JPY,4000,",
-      "2026-10-01,GCash,Payment,Simon,Klyde,1500.00,,,",
+      "Date,Description,Type,To pay,To be paid,Amount (PHP),Foreign currency,Foreign amount,Notes,Added by,Edited by",
+      '2026-10-02,Mineral Water,Expense,Adrian,Klyde,123.03,USD,2.46,,Bea,"Dave, Jr."',
+      `2026-10-01,'=cmd,Expense,Klyde,Adrian,100.00,,,"said ""thanks""",,`,
+      "2026-10-01,Hotel,Expense,Simon,Klyde,1500.00,JPY,4000,,,",
+      "2026-10-01,GCash,Payment,Simon,Klyde,1500.00,,,,,",
       "",
       "To pay,To be paid,Outstanding (PHP),Status",
       "Adrian,Klyde,23.03,Outstanding",

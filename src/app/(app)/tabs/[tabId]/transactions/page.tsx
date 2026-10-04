@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { DeletedTransactions } from "@/components/transactions/DeletedTransactions";
 import { MobileTransactionList } from "@/components/transactions/MobileTransactionList";
 import { SplitBillButton } from "@/components/transactions/SplitBillButton";
 import { TransactionList } from "@/components/transactions/TransactionList";
@@ -8,20 +9,30 @@ import { TransactionTable } from "@/components/transactions/TransactionTable";
 import { buttonStyles, cardStyles } from "@/components/ui/styles";
 import { compareByName } from "@/lib/settlement/orderSettlements";
 import { loadTabOr404 } from "@/lib/tabs/loadTab";
-import { listTransactions } from "@/lib/transactions/transactionService";
+import { shouldShowAuthorship } from "@/lib/transactions/authorship";
+import { listDeletedTransactions, listTransactions } from "@/lib/transactions/transactionService";
 
 export const metadata: Metadata = { title: "Transactions" };
 
 export default async function TransactionsPage({ params }: PageProps<"/tabs/[tabId]/transactions">) {
-  const { tab, people, actor, canEdit } = await loadTabOr404((await params).tabId);
-  const rows = await listTransactions(tab.id, actor);
+  const { tab, people, actor, canEdit, access, isShared } = await loadTabOr404((await params).tabId);
+  const [rows, deleted] = await Promise.all([listTransactions(tab.id, actor), listDeletedTransactions(tab.id, actor)]);
+  const showAuthors = shouldShowAuthorship({ access, isShared }, [...rows, ...deleted]);
   const options = people.map((person) => ({ id: person.id, displayName: person.displayName })).sort(compareByName);
+  const deletedSection = (
+    <DeletedTransactions rows={deleted} people={options} canRestore={canEdit} showAuthors={showAuthors} />
+  );
 
   if (!canEdit) {
-    return rows.length > 0 ? (
-      <TransactionList rows={rows} people={options} />
-    ) : (
-      <EmptyState title="No transactions" body="Nothing was recorded in this tab." />
+    return (
+      <div className="space-y-6">
+        {rows.length > 0 ? (
+          <TransactionList rows={rows} people={options} showAuthors={showAuthors} />
+        ) : (
+          <EmptyState title="No transactions" body="Nothing was recorded in this tab." />
+        )}
+        {deletedSection}
+      </div>
     );
   }
 
@@ -42,14 +53,15 @@ export default async function TransactionsPage({ params }: PageProps<"/tabs/[tab
   const split = <SplitBillButton tabId={tab.id} people={options} />;
   // Phones get a list with a bottom-sheet editor; the spreadsheet starts at md.
   return (
-    <>
+    <div className="space-y-6">
       <div className="hidden md:block">
-        <TransactionTable tabId={tab.id} people={options} rows={rows} actions={split} />
+        <TransactionTable tabId={tab.id} people={options} rows={rows} actions={split} showAuthors={showAuthors} />
       </div>
       <div className="md:hidden">
-        <MobileTransactionList tabId={tab.id} people={options} rows={rows} actions={split} />
+        <MobileTransactionList tabId={tab.id} people={options} rows={rows} actions={split} showAuthors={showAuthors} />
       </div>
-    </>
+      {deletedSection}
+    </div>
   );
 }
 

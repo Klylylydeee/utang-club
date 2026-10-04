@@ -19,6 +19,7 @@ import {
 import { ActionMessage } from "@/components/ui/ActionMessage";
 import { buttonStyles, iconButtonStyles } from "@/components/ui/styles";
 import type { ActionFailure } from "@/lib/actions/result";
+import { describeAuthorship } from "@/lib/transactions/authorship";
 import type { TransactionRow } from "@/lib/transactions/types";
 import {
   EMPTY_ROW,
@@ -32,6 +33,7 @@ import {
   type RowValues,
 } from "./rowValues";
 import { TransactionRowView, type PersonOption, type RowStatusView } from "./TransactionRowView";
+import { UndoDeleteNotice, type DeletedRef } from "./UndoDeleteNotice";
 import { validateRow } from "./validateRow";
 
 /**
@@ -97,6 +99,8 @@ export function TransactionTable(props: {
   rows: TransactionRow[];
   /** Extra toolbar buttons, e.g. "Split a bill". */
   actions?: ReactNode;
+  /** Show who added and changed each row (tabs more than one account uses). */
+  showAuthors?: boolean;
 }) {
   const { tabId, people } = props;
   const storageKey = `utang-club:unsaved:${tabId}`;
@@ -106,10 +110,16 @@ export function TransactionTable(props: {
     [props.rows],
   );
   const [displayRows, applyOptimistic] = useOptimistic(savedRows, applyChange);
+  const bylines = useMemo(
+    () =>
+      new Map(props.showAuthors ? props.rows.map((row) => [row.id, describeAuthorship(row)]) : []),
+    [props.rows, props.showAuthors],
+  );
   const [drafts, setDrafts] = useState<Record<string, RowValues>>({});
   const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({});
   const [newRows, setNewRows] = useState<NewRow[]>([{ key: "new-0", values: EMPTY_ROW, failure: null }]);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+  const [lastDeleted, setLastDeleted] = useState<DeletedRef | null>(null);
   const [foreignToggled, setForeignToggled] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -264,6 +274,7 @@ export function TransactionTable(props: {
       const result = await deleteTransactionAction({ transactionId: id });
       if (result.ok) {
         setDrafts((current) => without(current, row.key));
+        setLastDeleted({ id, description: row.values.description });
       } else {
         // The optimistic removal ends with the transition, so the row reappears with this message.
         setSaveState(row.key, { kind: "error", failure: { ...result, error: `Not deleted. ${result.error}` } });
@@ -409,6 +420,7 @@ export function TransactionTable(props: {
           </button>
         </div>
       </div>
+      <UndoDeleteNotice deleted={lastDeleted} onDone={() => setLastDeleted(null)} />
 
       <div className="relative overflow-x-auto overscroll-x-contain rounded-[10px] border border-separator bg-raised shadow-raised">
         <table ref={tableRef} className={`w-full border-collapse text-left ${showForeign ? "min-w-[1108px]" : "min-w-[900px]"}`}>
@@ -467,6 +479,7 @@ export function TransactionTable(props: {
                   locked={row.id === null}
                   onChange={(field, value) => editSaved(row, field, value)}
                   onLeave={() => saveRow(row)}
+                  byline={row.id ? bylines.get(row.id) : null}
                   actions={
                     row.id && (
                       <>

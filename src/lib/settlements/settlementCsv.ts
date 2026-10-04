@@ -18,7 +18,19 @@ export function buildSettlementCsv(
   const name = (id: string) => names.get(id) ?? "Unknown";
 
   const lines: string[][] = [
-    ["Date", "Description", "Type", "To pay", "To be paid", "Amount (PHP)", "Foreign currency", "Foreign amount", "Notes"],
+    [
+      "Date",
+      "Description",
+      "Type",
+      "To pay",
+      "To be paid",
+      "Amount (PHP)",
+      "Foreign currency",
+      "Foreign amount",
+      "Notes",
+      "Added by",
+      "Edited by",
+    ],
     ...rows.map((row) => [
       row.transactionDate ?? formatIsoDate(new Date(row.createdAt)),
       row.description,
@@ -31,6 +43,8 @@ export function buildSettlementCsv(
         ? minorToDecimalString(row.foreignAmountMinor, minorUnitsFor(row.foreignCurrency))
         : "",
       row.notes ?? "",
+      row.addedBy?.name ?? "",
+      row.editedBy?.name ?? "",
     ]),
     [],
     ["To pay", "To be paid", "Outstanding (PHP)", "Status"],

@@ -16,7 +16,10 @@ import { EMPTY_ROW, hasForeign, sameValues, toActionInput, type EditableField, t
 import type { PersonOption } from "./TransactionRowView";
 import { validateRow } from "./validateRow";
 
-export type SheetTarget = { mode: "create" } | { mode: "edit"; id: string; values: RowValues };
+export type SheetTarget =
+  | { mode: "create" }
+  /** `byline`: who added and changed the row, on shared tabs. */
+  | { mode: "edit"; id: string; values: RowValues; byline?: string | null };
 
 const SHOWN_FIELDS = new Set(["description", "amountPhp", "payerId", "recipientId", "type", "foreignCurrency", "foreignAmount"]);
 
@@ -31,6 +34,8 @@ export function TransactionSheet(props: {
   people: PersonOption[];
   target: SheetTarget | null;
   onClose: () => void;
+  /** Called after a row is deleted, so the list can offer Undo. */
+  onDeleted?: (id: string, description: string) => void;
 }) {
   const { target } = props;
   if (!target) return null;
@@ -41,11 +46,18 @@ export function TransactionSheet(props: {
       people={props.people}
       target={target}
       onClose={props.onClose}
+      onDeleted={props.onDeleted}
     />
   );
 }
 
-function SheetForm(props: { tabId: string; people: PersonOption[]; target: SheetTarget; onClose: () => void }) {
+function SheetForm(props: {
+  tabId: string;
+  people: PersonOption[];
+  target: SheetTarget;
+  onClose: () => void;
+  onDeleted?: (id: string, description: string) => void;
+}) {
   const { tabId, target } = props;
   const initial = target.mode === "edit" ? target.values : EMPTY_ROW;
   const [values, setValues] = useState<RowValues>(initial);
@@ -89,10 +101,11 @@ function SheetForm(props: { tabId: string; people: PersonOption[]; target: Sheet
     });
   }
 
-  function run(action: () => Promise<{ ok: true } | ActionFailure>) {
+  function run(action: () => Promise<{ ok: true } | ActionFailure>, onSuccess?: () => void) {
     startTransition(async () => {
       const result = await action();
       if (result.ok) {
+        onSuccess?.();
         props.onClose();
       } else {
         setFailure(result);
@@ -127,7 +140,12 @@ function SheetForm(props: { tabId: string; people: PersonOption[]; target: Sheet
         </button>
         <button
           type="button"
-          onClick={() => run(() => deleteTransactionAction({ transactionId: target.id }))}
+          onClick={() =>
+            run(
+              () => deleteTransactionAction({ transactionId: target.id }),
+              () => props.onDeleted?.(target.id, target.values.description),
+            )
+          }
           className={buttonStyles.danger}
           disabled={isPending}
         >
@@ -167,6 +185,7 @@ function SheetForm(props: { tabId: string; people: PersonOption[]; target: Sheet
       open
       onRequestClose={requestClose}
       title={target.mode === "edit" ? "Edit transaction" : "New transaction"}
+      description={target.mode === "edit" ? (target.byline ?? undefined) : undefined}
       footer={footer}
     >
       <form id="transaction-sheet" onSubmit={submit} noValidate className="space-y-4">

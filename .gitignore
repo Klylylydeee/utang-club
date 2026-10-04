@@ -23,6 +23,9 @@ playwright-report
 .env*.local
 !.env.example
 
+# promo screenshots and video (large media; not part of the app)
+/marketing
+
 # misc
 .DS_Store
 *.pem

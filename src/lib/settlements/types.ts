@@ -1,4 +1,5 @@
 import type { SettlementStatus, TransactionType } from "@/lib/settlement/types";
+import type { AuthorRef } from "@/lib/transactions/authorship";
 
 /** DTOs for the Settlements section. Plain, serializable; all sums done on the server. */
 
@@ -18,6 +19,8 @@ export type SettlementLine = {
   foreignAmountMinor: number | null;
   /** `YYYY-MM-DD`, or null. */
   transactionDate: string | null;
+  addedBy: AuthorRef | null;
+  editedBy: AuthorRef | null;
 };
 
 export type SettlementCard = {

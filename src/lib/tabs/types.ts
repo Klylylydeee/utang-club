@@ -53,4 +53,6 @@ export type TabDetail = {
   ownerName: string | null;
   /** The owner's user id when an admin views someone else's tab, for the breadcrumb; null otherwise. */
   ownerId: string | null;
+  /** Shared with at least one other account (D19). Not who with: that's for the owner. */
+  isShared: boolean;
 };

@@ -25,6 +25,16 @@ const transactionSchema = new Schema(
 
     transactionDate: { type: Date },
     notes: { type: String, trim: true, maxlength: 1000 },
+
+    // Who added the row, and who last changed a field in it. Rows from
+    // before these were recorded have neither.
+    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+    updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
+
+    // Deleting keeps the row (the audit trail) and hides it everywhere;
+    // it can be restored. Absent on live rows.
+    deletedAt: { type: Date },
+    deletedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true, strict: "throw" },
 );

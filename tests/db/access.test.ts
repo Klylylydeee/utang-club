@@ -22,7 +22,9 @@ import {
   createTransaction,
   deleteTransaction,
   duplicateTransaction,
+  listDeletedTransactions,
   listTransactions,
+  restoreTransaction,
   updateTransaction,
 } from "@/lib/transactions/transactionService";
 import {
@@ -78,7 +80,13 @@ async function setUp() {
     bea.actor,
   );
   const input = transactionInputSchema.parse({ tabId, description: "Taxi", amountPhp: "100", payerId: b, recipientId: a });
-  return { bea, dave, admin, tabId, personA: a, personB: b, row, input };
+  // A deleted row: hidden from every list and total, but restorable.
+  const deletedRow = await createTransaction(
+    transactionInputSchema.parse({ tabId, description: "Wrong entry", amountPhp: "999", payerId: b, recipientId: a }),
+    bea.actor,
+  );
+  await deleteTransaction({ transactionId: deletedRow.id }, bea.actor);
+  return { bea, dave, admin, tabId, personA: a, personB: b, row, input, deletedRow };
 }
 
 describe("another user (no access)", () => {
@@ -88,6 +96,7 @@ describe("another user (no access)", () => {
     await expectDomainError(listTransactions(tabId, dave.actor), "not-found");
     await expectDomainError(getSettlements(tabId, dave.actor), "not-found");
     await expectDomainError(getSettlementExport(tabId, dave.actor), "not-found");
+    await expectDomainError(listDeletedTransactions(tabId, dave.actor), "not-found");
     expect(await listTabs(dave.actor)).toEqual([]);
     expect(await listSharedTabs(dave.actor)).toEqual([]);
     await expectDomainError(listTabShares(tabId, dave.actor), "not-found");
@@ -105,6 +114,7 @@ describe("another user (no access)", () => {
     await expectDomainError(updateTransaction({ ...input, transactionId: row.id }, dave.actor), "not-found");
     await expectDomainError(deleteTransaction({ transactionId: row.id }, dave.actor), "not-found");
     await expectDomainError(duplicateTransaction({ transactionId: row.id }, dave.actor), "not-found");
+    await expectDomainError(restoreTransaction({ transactionId: (await setUp()).deletedRow.id }, dave.actor), "not-found");
     await expectDomainError(
       recordPayment(
         recordPaymentSchema.parse({ tabId, debtorId: personB, creditorId: personA, amountPhp: "1", allowOverpayment: true }),
@@ -141,7 +151,10 @@ describe("administrator", () => {
   it("can read anyone's tab, rows and settlements", async () => {
     const { admin, tabId } = await setUp();
     await expect(getTabDetail(tabId, admin.actor)).resolves.toMatchObject({ access: "admin", ownerName: "Bea" });
-    await expect(listTransactions(tabId, admin.actor)).resolves.toHaveLength(1);
+    await expect(listTransactions(tabId, admin.actor)).resolves.toHaveLength(1); // the deleted row stays hidden
+    await expect(listDeletedTransactions(tabId, admin.actor)).resolves.toMatchObject([
+      { description: "Wrong entry", deletedBy: { name: "Bea", isYou: false } },
+    ]);
     await expect(getSettlements(tabId, admin.actor)).resolves.toMatchObject({ outstanding: [{ amountPhpCentavos: 50000 }] });
     await expect(getSettlementExport(tabId, admin.actor)).resolves.toMatchObject({
       tabName: "Japan trip",
@@ -163,6 +176,7 @@ describe("administrator", () => {
     await expectDomainError(setTabArchived({ tabId, archived: true }, admin.actor), "read-only");
     await expectDomainError(renamePerson({ personId: personA, displayName: "X" }, admin.actor), "read-only");
     await expectDomainError(deleteTransaction({ transactionId: row.id }, admin.actor), "read-only");
+    await expectDomainError(restoreTransaction({ transactionId: (await setUp()).deletedRow.id }, admin.actor), "read-only");
   });
 
   it("can't manage sharing on someone else's tab", async () => {
@@ -279,8 +293,9 @@ async function expectNoChanges(
   ids: Awaited<ReturnType<typeof setUp>>,
   code: DomainError["code"],
 ) {
-  const { tabId, personA, personB, row, input } = ids;
+  const { tabId, personA, personB, row, input, deletedRow } = ids;
   await expectDomainError(addPerson({ tabId, displayName: "Eve" }, actor), code);
+  await expectDomainError(restoreTransaction({ transactionId: deletedRow.id }, actor), code);
   await expectDomainError(renamePerson({ personId: personA, displayName: "Eve" }, actor), code);
   await expectDomainError(deletePerson({ personId: personA }, actor), code);
   await expectDomainError(createTransaction(input, actor), code);
@@ -327,6 +342,7 @@ describe("shared with view access (D19)", () => {
     await expect(listTransactions(tabId, dave.actor)).resolves.toHaveLength(1);
     await expect(getSettlements(tabId, dave.actor)).resolves.toMatchObject({ outstanding: [{ amountPhpCentavos: 50000 }] });
     await expect(getSettlementExport(tabId, dave.actor)).resolves.toMatchObject({ tabName: "Japan trip" });
+    await expect(listDeletedTransactions(tabId, dave.actor)).resolves.toHaveLength(1);
     expect(await listSharedTabs(dave.actor)).toMatchObject([{ id: tabId, name: "Japan trip", ownerName: "Bea", role: "viewer" }]);
     expect(await listTabs(dave.actor)).toEqual([]); // not theirs
   });
@@ -343,8 +359,10 @@ describe("shared with view access (D19)", () => {
 
 describe("shared with edit access (D19)", () => {
   it("can change everything inside the tab", async () => {
-    const { bea, dave, tabId, personA, personB, row, input } = await setUp();
+    const { bea, dave, tabId, personA, personB, row, input, deletedRow } = await setUp();
     await shareTab(share(tabId, dave.email, "editor"), bea.actor);
+    await restoreTransaction({ transactionId: deletedRow.id }, dave.actor);
+    await deleteTransaction({ transactionId: deletedRow.id }, dave.actor);
 
     await expect(getTabDetail(tabId, dave.actor)).resolves.toMatchObject({ access: "editor", ownerName: "Bea" });
     const { id: carol } = await addPerson({ tabId, displayName: "Carol" }, dave.actor);

@@ -156,6 +156,87 @@ Affected files:
 -   **Docs:** `DATA_MODEL.md`, `ARCHITECTURE.md`, `AGENTS.md`,
     `PHASING.md` (D19), `README.md`, `HANDOFF.md`.
 
+## Milestone 11 --- Who added and changed each transaction (2026-10-04) --- done
+
+Recommended after sharing (D19): once friends can edit a tab, a disputed
+amount needs to show who entered or changed it. The owner said to
+proceed.
+
+Decisions:
+
+-   **Storage:** `Transaction` gets `createdBy` and `updatedBy` (User
+    ObjectIds) and keeps its `updatedAt` timestamp. Rows from before
+    this change have neither, and show nothing.
+-   **What sets them:**
+    -   Every row created (manual entry, duplicate, payment, split) sets
+        `createdBy`.
+    -   An edit sets `updatedBy` only when a field actually changes, so
+        saving an untouched row doesn't mark it "edited".
+-   **What the screen gets:** names only, plus `isYou` (never user ids
+    or emails): "Added by you", "Added by Bea, edited by Dave".
+-   **Where it shows:**
+    -   A line under each transaction: desktop table, phone list, phone
+        sheet, read-only table.
+    -   Settlement card line items.
+    -   CSV columns "Added by" and "Edited by".
+    -   Not on the share image.
+-   **When it shows:** only on tabs where more than one account is
+    involved: the tab is shared, the viewer isn't its owner, or another
+    account wrote a row. A tab only you use stays as clean as before.
+    The CSV always includes the columns.
+-   **Out of scope:** deletes aren't recorded. Rows are still
+    hard-deleted, and soft delete is a separate recommendation.
+
+Affected files:
+
+-   `src/models/Transaction.ts`.
+-   `src/lib/transactions/{transactionService,splitService,types,authorship}.ts`.
+-   `src/lib/tabs/{tabService,types}.ts`: `isShared`.
+-   `src/lib/settlements/{buildSettlementSummary,types,settlementCsv}.ts`.
+-   Transaction and settlement components, and the transactions and
+    settlements pages.
+-   **Tests:** authorship rules (unit), services (`createdBy`/`updatedBy`,
+    no-op edits), CSV, and an e2e check on a shared tab.
+-   **Docs:** `DATA_MODEL.md`, `PHASING.md` log, `HANDOFF.md`, `README.md`.
+
+## Milestone 12 --- Deleted transactions are kept and can be restored (2026-10-04) --- done
+
+This closes the gap left by milestone 11. Before it, a deleted row was
+simply gone, with no trace of who removed it, which went against
+"never destroy the audit trail".
+
+Decisions:
+
+-   **Soft delete:** deleting sets `deletedAt` and `deletedBy` instead of
+    removing the document. Deleted rows leave every total, count,
+    settlement, payment check and export. They stay in the database,
+    with no purge for now.
+-   **Undo:** right after a delete, the table and the phone list show
+    "Deleted “Ramen”. Undo".
+-   **"Recently deleted":** a collapsed section under the transactions
+    lists every deleted row with who deleted it and when. Owners and
+    editors can restore a row. Viewers and admins see the list
+    read-only, because it's part of the history.
+-   **Restore** brings a row back as it was, with its author and editor
+    unchanged. Restoring doesn't count as an edit. The tab must be
+    active and writable, as for any change.
+-   **People:** someone who appears only in deleted rows still can't be
+    removed from the tab, so a restore never points at a missing
+    person. The message says why.
+
+Affected files:
+
+-   `src/models/Transaction.ts`.
+-   `src/lib/transactions/{transactionService,types}.ts`.
+-   `src/lib/tabs/tabService.ts`: counts and the person-in-use check.
+-   `src/schemas/transaction.ts`, `src/actions/transactions.ts`.
+-   **Components:** the transaction table, the phone list, a new
+    `UndoDeleteNotice`, and a new `DeletedTransactions` section.
+-   **Tests:** access (restore and the deleted list), the service
+    (totals ignore deleted rows; restore; person in use), and e2e
+    (undo, then restore from the list).
+-   **Docs:** `DATA_MODEL.md`, `PHASING.md`, `HANDOFF.md`, `README.md`.
+
 ## Milestone 7 --- Hardening (PHASING Phase 8) --- done
 
 -   Integration tests.

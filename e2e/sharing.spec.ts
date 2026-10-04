@@ -58,6 +58,9 @@ test("share a tab: view only, then edit, then leave", async ({ page, browser }, 
   // The owner sees Dave's row.
   await page.goto(`${tab}/transactions`);
   await expect(transactionRows(page)).toHaveCount(2);
+  // ...and who added each one, now that the tab is shared.
+  await expect(page.getByText("Added by Dave").filter({ visible: true })).toHaveCount(1);
+  await expect(page.getByText("Added by you").filter({ visible: true })).toHaveCount(1);
 
   // Dave leaves; the tab is gone from his list and his access ends.
   await dave.goto(tab);

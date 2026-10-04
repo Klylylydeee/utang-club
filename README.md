@@ -94,6 +94,18 @@ tab under **Shared with you** on their tab list, and can remove it from
 their list ("Remove from my tabs"). The friend needs an account first:
 no emails are sent, so tell them yourself.
 
+On a shared tab, every transaction says who added it and who last
+changed it ("Added by you, edited by Dave"). The line appears under each
+row, on settlement card details, and in the CSV. A tab only you use
+doesn't show it.
+
+## Deleting and restoring
+
+Deleting a transaction doesn't erase it. Right after a delete you get
+**Undo**. Later, open **Recently deleted** under the transactions to see
+who deleted what and when, and **Restore** it. Deleted rows don't count
+toward any balance. Viewers can see the list but not restore.
+
 ## Sharing a summary
 
 On a tab's **Settlements** section:

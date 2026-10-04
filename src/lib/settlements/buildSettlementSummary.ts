@@ -77,6 +77,8 @@ function toCard(
         foreignCurrency: row?.foreignCurrency ?? null,
         foreignAmountMinor: row?.foreignAmountMinor ?? null,
         transactionDate: row?.transactionDate ?? null,
+        addedBy: row?.addedBy ?? null,
+        editedBy: row?.editedBy ?? null,
       };
     }),
   };

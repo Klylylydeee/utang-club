@@ -10,14 +10,19 @@ import { formatLongDate } from "@/lib/dates";
 import { getSettlements } from "@/lib/settlements/settlementService";
 import { buildSummaryText } from "@/lib/settlements/summaryText";
 import { loadTabOr404 } from "@/lib/tabs/loadTab";
+import { shouldShowAuthorship } from "@/lib/transactions/authorship";
 import { pluralize } from "@/lib/text";
 
 export const metadata: Metadata = { title: "Settlements" };
 
 export default async function SettlementsPage({ params }: PageProps<"/tabs/[tabId]/settlements">) {
-  const { tab, actor, canEdit } = await loadTabOr404((await params).tabId);
+  const { tab, actor, canEdit, access, isShared } = await loadTabOr404((await params).tabId);
   const summary = await getSettlements(tab.id, actor);
   const { outstanding, settled, people } = summary;
+  const showAuthors = shouldShowAuthorship(
+    { access, isShared },
+    [...outstanding, ...settled].flatMap((card) => card.lines),
+  );
   const readOnly = !canEdit;
 
   if (outstanding.length === 0 && settled.length === 0) {
@@ -68,7 +73,7 @@ export default async function SettlementsPage({ params }: PageProps<"/tabs/[tabI
           <ul className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {outstanding.map((card) => (
               <li key={card.key}>
-                <SettlementCardView card={card} tabId={tab.id} readOnly={readOnly} />
+                <SettlementCardView card={card} tabId={tab.id} readOnly={readOnly} showAuthors={showAuthors} />
               </li>
             ))}
           </ul>
@@ -100,7 +105,7 @@ export default async function SettlementsPage({ params }: PageProps<"/tabs/[tabI
           <ul className="mt-4 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {settled.map((card) => (
               <li key={card.key}>
-                <SettlementCardView card={card} tabId={tab.id} readOnly={readOnly} />
+                <SettlementCardView card={card} tabId={tab.id} readOnly={readOnly} showAuthors={showAuthors} />
               </li>
             ))}
           </ul>

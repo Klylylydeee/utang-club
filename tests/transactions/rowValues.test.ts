@@ -28,6 +28,8 @@ const saved: TransactionRow = {
   transactionDate: "2026-10-04",
   notes: "2 nights",
   createdAt: "2026-10-04T00:00:00.000Z",
+  addedBy: null,
+  editedBy: null,
 };
 
 describe("row values", () => {

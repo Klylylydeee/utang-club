@@ -27,6 +27,8 @@ type Props = {
   actions: ReactNode;
   /** A full-width line under the row: errors, delete confirmation. */
   below?: ReactNode;
+  /** "Added by Bea, edited by Dave", under the description (shared tabs only). */
+  byline?: string | null;
   columnCount: number;
 };
 
@@ -68,6 +70,7 @@ export function TransactionRowView(props: Props) {
           {...extra}
         />
         <FieldError id={error.id} message={error.message} />
+        {field === "description" && props.byline && <Byline text={props.byline} />}
       </td>
     );
   }
@@ -163,6 +166,10 @@ export function TransactionRowView(props: Props) {
       )}
     </>
   );
+}
+
+function Byline({ text }: { text: string }) {
+  return <p className="px-2.5 pb-1 text-[13px] leading-snug text-ink-secondary">{text}</p>;
 }
 
 function FieldError({ id, message }: { id: string; message?: string }) {
