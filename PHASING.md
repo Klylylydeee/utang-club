@@ -305,7 +305,7 @@ Scope:
 **Exit:** all CRUD works. Validation errors appear next to the field
 that caused them. Validation tests pass.
 
-## Phase 6 --- Settlement summary (PLAN Milestone 5)
+## Phase 6 --- Settlement summary (PLAN Milestone 5) --- ✅ done 2026-10-04
 
 Scope:
 
@@ -467,3 +467,21 @@ Record changes to D1--D13 and any new decisions here, with dates.
     -   Notes and transaction date are stored and carried through edits
         but have no table columns yet.
     -   Duplicate copies the row's *saved* values, not unsaved edits.
+-   2026-10-04 --- Phase 6 complete (the owner asked for "a summary per
+    Person 1 → Person 2", which is this section). Notes:
+    -   `buildSettlementSummary` (pure, in `src/lib/settlements/`) maps
+        the engine output to cards; `getSettlements` loads and calls it.
+        The owed / offsets-and-payments subtotals are summed there, so
+        the UI does no arithmetic.
+    -   The "Outstanding / Settled toggle" is a collapsed "Settled (n
+        pairs)" disclosure below the outstanding cards: hidden by
+        default, no client JavaScript.
+    -   Cards and the settled section are native `<details>`, so they
+        expand by touch and keyboard without hydration. Nested groups
+        need named Tailwind groups (`group/card`), or inner arrows
+        follow the outer one.
+    -   Line items say "Offset", "Payment" or "Paid back" in text with a
+        glyph; colour is only a secondary cue.
+    -   The app content width went from `max-w-5xl` to `max-w-6xl` so
+        the full transaction table fits at 1280 px without scrolling.
+    -   The "Record payment" button on cards is left for Phase 7.

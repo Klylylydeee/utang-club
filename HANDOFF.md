@@ -1,6 +1,6 @@
 # Handoff — Utang Club
 
-*Last updated: 2026-10-04 (after Phase 5)*
+*Last updated: 2026-10-04 (after Phase 6)*
 
 This is a snapshot of where the build stands. `PHASING.md` holds the
 full plan, the decisions D1–D14 and the decision log. This file covers
@@ -16,11 +16,11 @@ what exists today, what has been verified, and what's still loose.
 | 3 | Login and security hardening | ✅ Done, docs updated |
 | 4 | Tabs and people | ✅ Done |
 | 5 | Transaction table | ✅ Done, verified in a browser (production build, phone viewport, LAN IP) |
-| 6 | Settlement cards | ⏭️ **Next up.** The route exists as a placeholder. |
-| 7 | Payments | Not started |
+| 6 | Settlement cards | ✅ Done, verified in a browser (acceptance flow 1–6) |
+| 7 | Payments | ⏭️ **Next up** |
 | 8 | Hardening (Playwright suite, a11y, README) | Not started |
 
-`pnpm check` passes: typecheck, lint and **182 tests in 15 files**,
+`pnpm check` passes: typecheck, lint and **195 tests in 17 files**,
 including in-memory MongoDB tests.
 
 ## Changes the owner asked for along the way
@@ -162,26 +162,37 @@ Unchanged since the last handoff. In short:
    stored and preserved through edits). There is also no bottom-sheet
    row editor for phones, which `UI_SPEC.md` lists as optional.
 
-## Next: Phase 6, settlement summary
+### Phase 6: Settlement summary (added after this file's Phase 5 snapshot)
 
-Spec: `PHASING.md` → Phase 6, `UI_SPEC.md` → settlement cards,
-`REQUIREMENTS.md` acceptance criteria 1–4 and 6. What already exists:
+- `src/lib/settlements/buildSettlementSummary.ts` (pure, unit-tested)
+  turns rows + people into `SettlementCard`s (`types.ts`) via the
+  engine. `settlementService.getSettlements(tabId)` loads and calls it.
+- `src/components/settlements/SettlementCardView.tsx`: a server-rendered
+  `<details>` card: "Adrian → Klyde ₱23.03", expanding to each row with
+  "Offset" / "Payment" / "Paid back" labels, signed amounts and an
+  Owed / Offsets and payments / Outstanding summary.
+- The Settlements page shows outstanding cards in a grid, with settled
+  pairs folded under "Settled (n pairs)".
+- Verified: `tests/settlements/` and `tests/db/settlementService.test.ts`,
+  plus a browser run of acceptance criteria 1–6 on the production build
+  at phone width (13/13; touch audit clean; no console or CSP errors).
 
-- **Engine:** `calculatePairwiseSettlements(SettlementInput[])` and
-  `orderSettlements(settlements, names)`. Map `TransactionRow` (or the
-  raw docs) to `SettlementInput`: `id`, `type`, `payerId`,
-  `recipientId`, `amountPhpCentavos`, `transactionDate` (Date or null),
-  `createdAt` (Date).
-- **Line items** carry signed `effectCentavos`, and each settlement has
-  a `breakdown`, so the cards need no arithmetic.
-- **Data:** `listTransactions(tabId)` and `loadTabOr404()` (people)
-  give everything a `getSettlements` service needs. Put the service in
-  `src/lib/settlements/` (or next to the engine) and keep it
-  server-only.
-- **Revalidation:** transaction actions already revalidate the whole
-  tab layout, so the settlements page refreshes after any edit.
-- **Page:** the placeholder is
-  `src/app/(app)/tabs/[tabId]/settlements/page.tsx`.
+## Next: Phase 7, payments
+
+Spec: `PHASING.md` → Phase 7 (D1 overpayment warning, D7 prefilled
+amount), `UI_SPEC.md` → card footer "Record Payment".
+
+- A payment is already just a transaction with `type: "payment"`. It can
+  be entered in the table today, and the cards already handle it.
+- Add a `recordPayment` action, which can reuse `createTransaction`
+  with `type: "payment"`, payer = card debtor and recipient = card
+  creditor. Add a "Record payment" button and dialog on outstanding
+  cards, prefilled with `amountPhpCentavos`.
+- Warn before saving if the amount is more than the outstanding balance
+  (D1). Do the comparison on the server or in a pure helper, not with
+  floats in the component.
+- Still open with the owner: a payment in the reverse direction
+  increases the debt (`SETTLEMENT_RULES.md` → Clarifications).
 
 ## Running it
 
