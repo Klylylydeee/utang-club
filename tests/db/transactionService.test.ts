@@ -9,15 +9,20 @@ import {
   updateTransaction,
 } from "@/lib/transactions/transactionService";
 import { transactionInputSchema, transactionUpdateSchema, type TransactionFormInput } from "@/schemas/transaction";
+import type { Actor } from "@/lib/auth/actor";
 import { startTestDatabase } from "../support/mongo";
+import { createTestUser } from "../support/users";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 
 beforeAll(async () => {
   db = await startTestDatabase("transactions-test");
 });
+let owner: Actor;
+
 beforeEach(async () => {
   await db.clear();
+  owner = (await createTestUser()).actor;
 });
 afterAll(async () => {
   await db?.stop();
@@ -35,9 +40,9 @@ async function expectDomainError(promise: Promise<unknown>, code: DomainError["c
 
 /** A tab with Adrian and Klyde, plus a parser for rows typed into it. */
 async function setUp() {
-  const { id: tabId } = await createTab({ name: "October 2026", description: undefined });
-  const { id: adrian } = await addPerson({ tabId, displayName: "Adrian" });
-  const { id: klyde } = await addPerson({ tabId, displayName: "Klyde" });
+  const { id: tabId } = await createTab({ name: "October 2026", description: undefined }, owner);
+  const { id: adrian } = await addPerson({ tabId, displayName: "Adrian" }, owner);
+  const { id: klyde } = await addPerson({ tabId, displayName: "Klyde" }, owner);
   const input = (overrides: Partial<TransactionFormInput> = {}) =>
     transactionInputSchema.parse({
       tabId,
@@ -53,8 +58,8 @@ async function setUp() {
 describe("createTransaction", () => {
   it("stores a row and lists it back in entry order", async () => {
     const { tabId, adrian, klyde, input } = await setUp();
-    const first = await createTransaction(input());
-    const second = await createTransaction(input({ description: "Taxi", amountPhp: "1,301" }));
+    const first = await createTransaction(input(), owner);
+    const second = await createTransaction(input({ description: "Taxi", amountPhp: "1,301" }), owner);
 
     expect(first).toMatchObject({
       type: "expense",
@@ -67,7 +72,7 @@ describe("createTransaction", () => {
       transactionDate: null,
       notes: null,
     });
-    const rows = await listTransactions(tabId);
+    const rows = await listTransactions(tabId, owner);
     expect(rows.map((row) => row.id)).toEqual([first.id, second.id]);
     expect(rows[1].amountPhpCentavos).toBe(130100);
   });
@@ -75,8 +80,7 @@ describe("createTransaction", () => {
   it("keeps foreign amounts, dates and notes", async () => {
     const { input } = await setUp();
     const row = await createTransaction(
-      input({ foreignCurrency: "jpy", foreignAmount: "1500", transactionDate: "2026-10-04", notes: "Lawson" }),
-    );
+      input({ foreignCurrency: "jpy", foreignAmount: "1500", transactionDate: "2026-10-04", notes: "Lawson" }), owner);
     expect(row).toMatchObject({
       foreignCurrency: "JPY",
       foreignAmountMinor: 1500,
@@ -87,21 +91,21 @@ describe("createTransaction", () => {
 
   it("allows duplicate descriptions", async () => {
     const { tabId, input } = await setUp();
-    await createTransaction(input());
-    await createTransaction(input());
-    expect(await listTransactions(tabId)).toHaveLength(2);
+    await createTransaction(input(), owner);
+    await createTransaction(input(), owner);
+    expect(await listTransactions(tabId, owner)).toHaveLength(2);
   });
 
   it("rejects a person from a different tab, naming the field", async () => {
     const { input } = await setUp();
-    const { id: otherTab } = await createTab({ name: "Other", description: undefined });
-    const { id: stranger } = await addPerson({ tabId: otherTab, displayName: "Simon" });
+    const { id: otherTab } = await createTab({ name: "Other", description: undefined }, owner);
+    const { id: stranger } = await addPerson({ tabId: otherTab, displayName: "Simon" }, owner);
 
-    const error = await expectDomainError(createTransaction(input({ recipientId: stranger })), "validation");
+    const error = await expectDomainError(createTransaction(input({ recipientId: stranger }), owner), "validation");
     expect(error.fieldErrors).toEqual({ recipientId: "Choose someone in this tab" });
 
     const both = await expectDomainError(
-      createTransaction(input({ payerId: stranger, recipientId: "65a0000000000000000000ee" })),
+      createTransaction(input({ payerId: stranger, recipientId: "65a0000000000000000000ee" }), owner),
       "validation",
     );
     expect(Object.keys(both.fieldErrors ?? {}).sort()).toEqual(["payerId", "recipientId"]);
@@ -109,25 +113,25 @@ describe("createTransaction", () => {
 
   it("rejects writes to an archived tab (D6) and an unknown tab", async () => {
     const { tabId, input } = await setUp();
-    await setTabArchived({ tabId, archived: true });
-    await expectDomainError(createTransaction(input()), "read-only");
-    await expectDomainError(createTransaction(input({ tabId: "65a0000000000000000000ff" })), "not-found");
+    await setTabArchived({ tabId, archived: true }, owner);
+    await expectDomainError(createTransaction(input(), owner), "read-only");
+    await expectDomainError(createTransaction(input({ tabId: "65a0000000000000000000ff" }), owner), "not-found");
   });
 
   it("counts toward the tab and blocks removing people in use (D5)", async () => {
     const { tabId, adrian, input } = await setUp();
-    await createTransaction(input());
-    const detail = await getTabDetail(tabId);
+    await createTransaction(input(), owner);
+    const detail = await getTabDetail(tabId, owner);
     expect(detail?.tab.transactionCount).toBe(1);
     expect(detail?.people.map((person) => person.transactionCount)).toEqual([1, 1]);
-    await expectDomainError(deletePerson({ personId: adrian }), "in-use");
+    await expectDomainError(deletePerson({ personId: adrian }, owner), "in-use");
   });
 });
 
 describe("updateTransaction", () => {
   it("replaces every field, clearing optional ones that were removed", async () => {
     const { tabId, adrian, klyde, input } = await setUp();
-    const row = await createTransaction(input({ foreignCurrency: "USD", foreignAmount: "2.46", notes: "note" }));
+    const row = await createTransaction(input({ foreignCurrency: "USD", foreignAmount: "2.46", notes: "note" }), owner);
 
     const updated = await updateTransaction(
       transactionUpdateSchema.parse({
@@ -138,8 +142,7 @@ describe("updateTransaction", () => {
         amountPhp: "100",
         payerId: klyde,
         recipientId: adrian,
-      }),
-    );
+      }), owner);
 
     expect(updated).toMatchObject({
       id: row.id,
@@ -153,68 +156,68 @@ describe("updateTransaction", () => {
       notes: null,
       createdAt: row.createdAt,
     });
-    expect(await listTransactions(tabId)).toEqual([updated]);
+    expect(await listTransactions(tabId, owner)).toEqual([updated]);
   });
 
   it("can't move a row to another tab or use people from another tab", async () => {
     const { tabId, klyde, input } = await setUp();
-    const row = await createTransaction(input());
+    const row = await createTransaction(input(), owner);
     const other = await setUp();
 
     await expectDomainError(
-      updateTransaction({ ...input({ tabId: other.tabId, payerId: other.adrian, recipientId: other.klyde }), transactionId: row.id }),
+      updateTransaction({ ...input({ tabId: other.tabId, payerId: other.adrian, recipientId: other.klyde }), transactionId: row.id }, owner),
       "not-found",
     );
     const error = await expectDomainError(
-      updateTransaction({ ...input({ payerId: other.adrian, recipientId: klyde }), transactionId: row.id }),
+      updateTransaction({ ...input({ payerId: other.adrian, recipientId: klyde }), transactionId: row.id }, owner),
       "validation",
     );
     expect(error.fieldErrors).toEqual({ payerId: "Choose someone in this tab" });
-    expect(await listTransactions(tabId)).toEqual([row]);
+    expect(await listTransactions(tabId, owner)).toEqual([row]);
   });
 
   it("rejects edits to an archived tab and to a deleted row", async () => {
     const { tabId, input } = await setUp();
-    const row = await createTransaction(input());
-    await setTabArchived({ tabId, archived: true });
-    await expectDomainError(updateTransaction({ ...input(), transactionId: row.id }), "read-only");
-    await setTabArchived({ tabId, archived: false });
-    await deleteTransaction({ transactionId: row.id });
-    await expectDomainError(updateTransaction({ ...input(), transactionId: row.id }), "not-found");
+    const row = await createTransaction(input(), owner);
+    await setTabArchived({ tabId, archived: true }, owner);
+    await expectDomainError(updateTransaction({ ...input(), transactionId: row.id }, owner), "read-only");
+    await setTabArchived({ tabId, archived: false }, owner);
+    await deleteTransaction({ transactionId: row.id }, owner);
+    await expectDomainError(updateTransaction({ ...input(), transactionId: row.id }, owner), "not-found");
   });
 });
 
 describe("deleteTransaction and duplicateTransaction", () => {
   it("deletes only the chosen row", async () => {
     const { tabId, input } = await setUp();
-    const keep = await createTransaction(input());
-    const remove = await createTransaction(input({ description: "Taxi" }));
-    await expect(deleteTransaction({ transactionId: remove.id })).resolves.toEqual({ tabId });
-    expect(await listTransactions(tabId)).toEqual([keep]);
-    await expectDomainError(deleteTransaction({ transactionId: remove.id }), "not-found");
+    const keep = await createTransaction(input(), owner);
+    const remove = await createTransaction(input({ description: "Taxi" }), owner);
+    await expect(deleteTransaction({ transactionId: remove.id }, owner)).resolves.toEqual({ tabId });
+    expect(await listTransactions(tabId, owner)).toEqual([keep]);
+    await expectDomainError(deleteTransaction({ transactionId: remove.id }, owner), "not-found");
   });
 
   it("duplicates the saved values into a new row at the end", async () => {
     const { tabId, input } = await setUp();
-    const original = await createTransaction(input({ foreignCurrency: "USD", foreignAmount: "2.46" }));
-    await createTransaction(input({ description: "Taxi" }));
+    const original = await createTransaction(input({ foreignCurrency: "USD", foreignAmount: "2.46" }), owner);
+    await createTransaction(input({ description: "Taxi" }), owner);
 
-    const copy = await duplicateTransaction({ transactionId: original.id });
+    const copy = await duplicateTransaction({ transactionId: original.id }, owner);
     expect(copy.id).not.toBe(original.id);
     expect(copy.tabId).toBe(tabId);
     expect({ ...copy, id: original.id, createdAt: original.createdAt, tabId: undefined }).toEqual({
       ...original,
       tabId: undefined,
     });
-    expect((await listTransactions(tabId)).at(-1)?.id).toBe(copy.id);
+    expect((await listTransactions(tabId, owner)).at(-1)?.id).toBe(copy.id);
   });
 
   it("refuses both on an archived tab", async () => {
     const { tabId, input } = await setUp();
-    const row = await createTransaction(input());
-    await setTabArchived({ tabId, archived: true });
-    await expectDomainError(deleteTransaction({ transactionId: row.id }), "read-only");
-    await expectDomainError(duplicateTransaction({ transactionId: row.id }), "read-only");
-    expect(await listTransactions(tabId)).toHaveLength(1);
+    const row = await createTransaction(input(), owner);
+    await setTabArchived({ tabId, archived: true }, owner);
+    await expectDomainError(deleteTransaction({ transactionId: row.id }, owner), "read-only");
+    await expectDomainError(duplicateTransaction({ transactionId: row.id }, owner), "read-only");
+    expect(await listTransactions(tabId, owner)).toHaveLength(1);
   });
 });

@@ -13,6 +13,9 @@ export const SESSION_ABSOLUTE_TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000;
 export const SESSION_TOUCH_INTERVAL_MS = 60 * 60 * 1000;
 
 export const LOGIN_PATH = "/login";
+export const REGISTER_PATH = "/register";
+/** Pages reachable without a session. */
+export const PUBLIC_PATHS: ReadonlySet<string> = new Set([LOGIN_PATH, REGISTER_PATH]);
 
 export function sessionCookieName(isHttps: boolean): string {
   return isHttps ? SESSION_COOKIE_SECURE : SESSION_COOKIE_PLAIN;

@@ -1,23 +1,32 @@
 import "server-only";
 import { Types } from "mongoose";
 import { DomainError } from "@/lib/actions/result";
+import type { Actor } from "@/lib/auth/actor";
 import { connectToDatabase } from "@/lib/db/connect";
 import { Person } from "@/models/Person";
 import { Tab } from "@/models/Tab";
 import { Transaction } from "@/models/Transaction";
+import { User } from "@/models/User";
 import { normalizePersonName, type PersonDelete, type PersonInput, type PersonUpdate } from "@/schemas/person";
 import type { CreateTabInput, SetTabArchivedInput, UpdateTabDetailsInput } from "@/schemas/tab";
-import type { PersonSummary, TabDetail, TabStatus, TabSummary } from "./types";
+import type { PersonSummary, TabAccess, TabDetail, TabStatus, TabSummary } from "./types";
 
 /**
  * Tabs and participants. Inputs are already Zod-validated (ids are valid
  * 24-hex strings). Expected failures throw DomainError; callers map them.
+ *
+ * Access (D15–D17): an owner can read and change their tabs; an admin can
+ * read anyone's but change only their own; anyone else gets "not found",
+ * so tab ids can't be probed.
  */
 
 const READ_ONLY_MESSAGE = "This tab is archived. Unarchive it to make changes.";
+const ADMIN_READ_ONLY_MESSAGE = "Administrators can view other people's tabs but can't change them.";
+const NOT_FOUND_MESSAGE = "This tab no longer exists.";
 
 type TabDoc = {
   _id: Types.ObjectId;
+  ownerId?: Types.ObjectId | null;
   name: string;
   description?: string | null;
   status: TabStatus;
@@ -46,10 +55,20 @@ async function countByTab(model: typeof Person | typeof Transaction, tabIds: Typ
   return new Map(rows.map((row) => [row._id.toString(), row.count]));
 }
 
-/** All tabs, most recently updated first. */
-export async function listTabs(): Promise<TabSummary[]> {
+/** The actor's own tabs, most recently updated first. */
+export async function listTabs(actor: Actor): Promise<TabSummary[]> {
+  return listTabsOwnedBy(actor.userId);
+}
+
+/** Another user's tabs, for the admin area. */
+export async function listTabsForUser(userId: string, actor: Actor): Promise<TabSummary[]> {
+  if (actor.role !== "admin" && actor.userId !== userId) throw new DomainError("not-found", NOT_FOUND_MESSAGE);
+  return listTabsOwnedBy(userId);
+}
+
+async function listTabsOwnedBy(userId: string): Promise<TabSummary[]> {
   await connectToDatabase();
-  const tabs = await Tab.find().sort({ updatedAt: -1 }).lean<TabDoc[]>();
+  const tabs = await Tab.find({ ownerId: new Types.ObjectId(userId) }).sort({ updatedAt: -1 }).lean<TabDoc[]>();
   const ids = tabs.map((tab) => tab._id);
   const [people, transactions] = await Promise.all([countByTab(Person, ids), countByTab(Transaction, ids)]);
   return tabs.map((tab) =>
@@ -57,12 +76,13 @@ export async function listTabs(): Promise<TabSummary[]> {
   );
 }
 
-/** One tab with its people, or null if it does not exist. */
-export async function getTabDetail(tabId: string): Promise<TabDetail | null> {
+/** One tab with its people, or null if it doesn't exist or the actor may not see it. */
+export async function getTabDetail(tabId: string, actor: Actor): Promise<TabDetail | null> {
   await connectToDatabase();
   const id = new Types.ObjectId(tabId);
   const tab = await Tab.findById(id).lean<TabDoc>();
-  if (!tab) return null;
+  const access = tab ? accessTo(tab, actor) : null;
+  if (!tab || !access) return null;
 
   const [people, involvement, transactionCount] = await Promise.all([
     Person.find({ tabId: id }).sort({ createdAt: 1 }).lean(),
@@ -82,18 +102,29 @@ export async function getTabDetail(tabId: string): Promise<TabDetail | null> {
     transactionCount: counts.get(person._id.toString()) ?? 0,
   }));
 
-  return { tab: toSummary(tab, people.length, transactionCount), people: personSummaries };
+  const owner = access === "admin" && tab.ownerId ? await User.findById(tab.ownerId, { name: 1 }).lean() : null;
+
+  return {
+    tab: toSummary(tab, people.length, transactionCount),
+    people: personSummaries,
+    access,
+    ownerName: owner?.name ?? null,
+  };
 }
 
-export async function createTab(input: CreateTabInput): Promise<{ id: string }> {
+export async function createTab(input: CreateTabInput, actor: Actor): Promise<{ id: string }> {
   await connectToDatabase();
-  const tab = await Tab.create({ name: input.name, description: input.description });
+  const tab = await Tab.create({
+    ownerId: new Types.ObjectId(actor.userId),
+    name: input.name,
+    description: input.description,
+  });
   return { id: tab._id.toString() };
 }
 
-export async function updateTabDetails(input: UpdateTabDetailsInput): Promise<void> {
+export async function updateTabDetails(input: UpdateTabDetailsInput, actor: Actor): Promise<void> {
   await connectToDatabase();
-  const tab = await loadTab(input.tabId);
+  const tab = await loadOwnedTab(input.tabId, actor);
   if (tab.status === "archived") throw new DomainError("read-only", READ_ONLY_MESSAGE);
   await Tab.updateOne(
     { _id: tab._id },
@@ -104,15 +135,15 @@ export async function updateTabDetails(input: UpdateTabDetailsInput): Promise<vo
 }
 
 /** Archiving makes a tab read-only (D6); unarchiving is always allowed. */
-export async function setTabArchived(input: SetTabArchivedInput): Promise<void> {
+export async function setTabArchived(input: SetTabArchivedInput, actor: Actor): Promise<void> {
   await connectToDatabase();
-  const tab = await loadTab(input.tabId);
+  const tab = await loadOwnedTab(input.tabId, actor);
   await Tab.updateOne({ _id: tab._id }, { $set: { status: input.archived ? "archived" : "active" } });
 }
 
-export async function addPerson(input: PersonInput): Promise<{ id: string }> {
+export async function addPerson(input: PersonInput, actor: Actor): Promise<{ id: string }> {
   await connectToDatabase();
-  const tab = await loadWritableTab(input.tabId);
+  const tab = await loadWritableTab(input.tabId, actor);
   const normalizedName = normalizePersonName(input.displayName);
   await assertNameAvailable(tab._id, normalizedName, input.displayName);
   try {
@@ -125,10 +156,10 @@ export async function addPerson(input: PersonInput): Promise<{ id: string }> {
 }
 
 /** Renames a person. History stays intact because rows reference the id. */
-export async function renamePerson(input: PersonUpdate): Promise<{ tabId: string }> {
+export async function renamePerson(input: PersonUpdate, actor: Actor): Promise<{ tabId: string }> {
   await connectToDatabase();
   const person = await loadPerson(input.personId);
-  await loadWritableTab(person.tabId.toString());
+  await loadWritableTab(person.tabId.toString(), actor);
   const normalizedName = normalizePersonName(input.displayName);
   if (normalizedName !== person.normalizedName) {
     await assertNameAvailable(person.tabId, normalizedName, input.displayName);
@@ -143,10 +174,10 @@ export async function renamePerson(input: PersonUpdate): Promise<{ tabId: string
 }
 
 /** Removes a person who has no transactions (D5). */
-export async function deletePerson(input: PersonDelete): Promise<{ tabId: string }> {
+export async function deletePerson(input: PersonDelete, actor: Actor): Promise<{ tabId: string }> {
   await connectToDatabase();
   const person = await loadPerson(input.personId);
-  await loadWritableTab(person.tabId.toString());
+  await loadWritableTab(person.tabId.toString(), actor);
   const used = await Transaction.exists({ $or: [{ payerId: person._id }, { recipientId: person._id }] });
   if (used) {
     throw new DomainError(
@@ -159,16 +190,30 @@ export async function deletePerson(input: PersonDelete): Promise<{ tabId: string
   return { tabId: person.tabId.toString() };
 }
 
-/** Throws unless the tab exists and is active. Used by every write inside a tab. */
-export async function loadWritableTab(tabId: string) {
-  const tab = await loadTab(tabId);
-  if (tab.status === "archived") throw new DomainError("read-only", READ_ONLY_MESSAGE);
+/** "owner", "admin" (may read, not change), or null (may not see it at all). */
+function accessTo(tab: TabDoc, actor: Actor): TabAccess | null {
+  if (tab.ownerId?.equals(actor.userId)) return "owner";
+  return actor.role === "admin" ? "admin" : null;
+}
+
+/** Throws unless the actor may see the tab (owner or admin). Used by reads inside a tab. */
+export async function loadReadableTab(tabId: string, actor: Actor) {
+  const tab = await Tab.findById(new Types.ObjectId(tabId)).lean<TabDoc>();
+  if (!tab || !accessTo(tab, actor)) throw new DomainError("not-found", NOT_FOUND_MESSAGE);
   return tab;
 }
 
-async function loadTab(tabId: string) {
-  const tab = await Tab.findById(new Types.ObjectId(tabId)).lean<TabDoc>();
-  if (!tab) throw new DomainError("not-found", "This tab no longer exists.");
+/** Throws unless the actor owns the tab. Archived tabs pass (they can be unarchived). */
+export async function loadOwnedTab(tabId: string, actor: Actor) {
+  const tab = await loadReadableTab(tabId, actor);
+  if (accessTo(tab, actor) !== "owner") throw new DomainError("read-only", ADMIN_READ_ONLY_MESSAGE);
+  return tab;
+}
+
+/** Throws unless the actor owns the tab and it is active (D6). Used by every write inside a tab. */
+export async function loadWritableTab(tabId: string, actor: Actor) {
+  const tab = await loadOwnedTab(tabId, actor);
+  if (tab.status === "archived") throw new DomainError("read-only", READ_ONLY_MESSAGE);
   return tab;
 }
 

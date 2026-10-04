@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { login, type LoginState } from "./actions";
 
-const initialState: LoginState = { error: null };
+const initialState: LoginState = { error: null, email: "" };
 
 export function LoginForm({ next }: { next: string }) {
   const [state, formAction, isPending] = useActionState(login, initialState);

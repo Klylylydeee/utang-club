@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "db:local": "node scripts/local-db.mjs",
-    "hash-password": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/hash-password.ts"
+    "create-admin": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/create-admin.ts"
   },
   "dependencies": {
     "mongoose": "^9.10.3",

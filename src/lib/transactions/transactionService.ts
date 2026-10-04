@@ -1,16 +1,18 @@
 import "server-only";
 import mongoose, { Types } from "mongoose";
 import { DomainError } from "@/lib/actions/result";
+import type { Actor } from "@/lib/auth/actor";
 import { connectToDatabase } from "@/lib/db/connect";
-import { loadWritableTab, touchTab } from "@/lib/tabs/tabService";
+import { loadReadableTab, loadWritableTab, touchTab } from "@/lib/tabs/tabService";
 import { Person } from "@/models/Person";
 import { Transaction } from "@/models/Transaction";
 import type { TransactionInput, TransactionRef, TransactionUpdate } from "@/schemas/transaction";
 import type { TransactionRow } from "./types";
 
 /**
- * Transaction rows inside a tab. Inputs are already Zod-validated. Every
- * write checks the tab is writable (D6) and that both people belong to it.
+ * Transaction rows inside a tab. Inputs are already Zod-validated. Reads
+ * need read access to the tab; every write needs the owner and an active
+ * tab (D6, D15) and checks that both people belong to it.
  * Rows are never changed or removed except by an explicit user edit or
  * delete; a zero balance never touches history.
  */
@@ -49,17 +51,18 @@ function toRow(doc: TransactionDoc): TransactionRow {
 }
 
 /** A tab's rows in entry order, like the spreadsheet they replace. */
-export async function listTransactions(tabId: string): Promise<TransactionRow[]> {
+export async function listTransactions(tabId: string, actor: Actor): Promise<TransactionRow[]> {
   await connectToDatabase();
+  await loadReadableTab(tabId, actor);
   const docs = await Transaction.find({ tabId: new Types.ObjectId(tabId) })
     .sort({ createdAt: 1, _id: 1 })
     .lean<TransactionDoc[]>();
   return docs.map(toRow);
 }
 
-export async function createTransaction(input: TransactionInput): Promise<TransactionRow> {
+export async function createTransaction(input: TransactionInput, actor: Actor): Promise<TransactionRow> {
   await connectToDatabase();
-  const tab = await loadWritableTab(input.tabId);
+  const tab = await loadWritableTab(input.tabId, actor);
   await assertParticipants(tab._id, input);
   const doc = await Transaction.create({ ...persistedFields(input), tabId: tab._id });
   await touchTab(tab._id);
@@ -67,11 +70,11 @@ export async function createTransaction(input: TransactionInput): Promise<Transa
 }
 
 /** Replaces every editable field. A row can't be moved to another tab. */
-export async function updateTransaction(input: TransactionUpdate): Promise<TransactionRow> {
+export async function updateTransaction(input: TransactionUpdate, actor: Actor): Promise<TransactionRow> {
   await connectToDatabase();
   const existing = await loadTransaction(input.transactionId);
   if (!existing.tabId.equals(input.tabId)) throw new DomainError("not-found", NOT_FOUND_MESSAGE);
-  const tab = await loadWritableTab(input.tabId);
+  const tab = await loadWritableTab(input.tabId, actor);
   await assertParticipants(tab._id, input);
 
   const fields = persistedFields(input);
@@ -92,20 +95,23 @@ export async function updateTransaction(input: TransactionUpdate): Promise<Trans
   return toRow(doc);
 }
 
-export async function deleteTransaction(input: TransactionRef): Promise<{ tabId: string }> {
+export async function deleteTransaction(input: TransactionRef, actor: Actor): Promise<{ tabId: string }> {
   await connectToDatabase();
   const existing = await loadTransaction(input.transactionId);
-  await loadWritableTab(existing.tabId.toString());
+  await loadWritableTab(existing.tabId.toString(), actor);
   await Transaction.deleteOne({ _id: existing._id });
   await touchTab(existing.tabId);
   return { tabId: existing.tabId.toString() };
 }
 
 /** Copies a row's saved values into a new row at the end of the tab. */
-export async function duplicateTransaction(input: TransactionRef): Promise<TransactionRow & { tabId: string }> {
+export async function duplicateTransaction(
+  input: TransactionRef,
+  actor: Actor,
+): Promise<TransactionRow & { tabId: string }> {
   await connectToDatabase();
   const existing = await loadTransaction(input.transactionId);
-  await loadWritableTab(existing.tabId.toString());
+  await loadWritableTab(existing.tabId.toString(), actor);
   const doc = await Transaction.create({
     tabId: existing.tabId,
     type: existing.type,

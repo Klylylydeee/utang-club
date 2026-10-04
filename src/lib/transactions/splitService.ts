@@ -1,6 +1,7 @@
 import "server-only";
 import { Types } from "mongoose";
 import { DomainError } from "@/lib/actions/result";
+import type { Actor } from "@/lib/auth/actor";
 import { connectToDatabase } from "@/lib/db/connect";
 import { formatPhp } from "@/lib/settlement/money";
 import { compareByName } from "@/lib/settlement/orderSettlements";
@@ -17,9 +18,9 @@ import type { SplitExpenseInput } from "@/schemas/split";
  * SETTLEMENT_RULES.md → Splitting a bill). Every row notes the split it
  * came from, so the audit trail explains odd centavos.
  */
-export async function splitExpense(input: SplitExpenseInput): Promise<{ created: number }> {
+export async function splitExpense(input: SplitExpenseInput, actor: Actor): Promise<{ created: number }> {
   await connectToDatabase();
-  const tab = await loadWritableTab(input.tabId);
+  const tab = await loadWritableTab(input.tabId, actor);
 
   const people = await Person.find({ tabId: tab._id }, { displayName: 1 }).lean();
   const byId = new Map(people.map((person) => [person._id.toString(), { id: person._id.toString(), displayName: person.displayName }]));

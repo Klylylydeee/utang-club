@@ -1,7 +1,7 @@
 /**
- * Owner-password hashing (decision D13). scrypt via node:crypto, compared
+ * Password hashing (D13; per account since D15). scrypt via node:crypto, compared
  * in constant time. Deliberately free of Next.js imports so
- * `scripts/hash-password.ts` can reuse it; it is still server-only in
+ * `scripts/create-admin.ts` can reuse it; it is still server-only in
  * practice because node:crypto cannot be bundled for the browser.
  *
  * Encoded format: scrypt:<log2 N>:<r>:<p>:<salt b64url>:<hash b64url>
@@ -9,8 +9,9 @@
  */
 import { randomBytes, scrypt, timingSafeEqual, type ScryptOptions } from "node:crypto";
 
-export const MIN_PASSWORD_LENGTH = 12;
-export const MAX_PASSWORD_LENGTH = 1024;
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./passwordRules.ts";
+
+export { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH };
 
 const DEFAULT_PARAMS = { log2N: 15, r: 8, p: 1 } as const;
 const KEY_LENGTH = 32;

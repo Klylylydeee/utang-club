@@ -1,45 +1,51 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { getAuthEnv } from "@/lib/env";
+import { notFound, redirect } from "next/navigation";
+import { cache } from "react";
 import { LOGIN_PATH, SESSION_COOKIE_PLAIN, SESSION_COOKIE_SECURE, sessionCookieName } from "./constants";
 import { getRequestContext } from "./requestContext";
 import {
   createSessionRecord,
-  deleteAllSessionRecords,
   deleteSessionRecord,
+  deleteUserSessions,
   findActiveSession,
   type ActiveSession,
 } from "./sessionStore";
-import { passwordFingerprint } from "./tokens";
-
-function currentFingerprint(): string {
-  return passwordFingerprint(getAuthEnv().AUTH_PASSWORD_HASH);
-}
 
 async function readSessionToken(): Promise<string | undefined> {
   const jar = await cookies();
   return jar.get(SESSION_COOKIE_SECURE)?.value ?? jar.get(SESSION_COOKIE_PLAIN)?.value;
 }
 
-/** The current session, or null. This is the real security check (not the proxy). */
-export async function getSession(): Promise<ActiveSession | null> {
+/**
+ * The current session and its user, or null. This is the real security
+ * check (not the proxy). Cached per request so a page and its layouts
+ * share one lookup.
+ */
+export const getSession = cache(async (): Promise<ActiveSession | null> => {
   const token = await readSessionToken();
   if (!token) return null;
-  return findActiveSession(token, currentFingerprint());
-}
+  return findActiveSession(token);
+});
 
-/** For pages and layouts: sends unauthenticated visitors to the login page. */
+/** For pages and layouts: sends signed-out visitors to the sign-in page. */
 export async function requireSession(): Promise<ActiveSession> {
   const session = await getSession();
   if (!session) redirect(LOGIN_PATH);
   return session;
 }
 
-/** Starts a fresh session (new token every login: no session fixation). */
-export async function startSession(): Promise<void> {
+/** For admin pages: anyone else gets a 404, so the area isn't advertised. */
+export async function requireAdmin(): Promise<ActiveSession> {
+  const session = await requireSession();
+  if (session.user.role !== "admin") notFound();
+  return session;
+}
+
+/** Starts a fresh session for a user (a new token every sign-in: no session fixation). */
+export async function startSession(user: { id: string; passwordHash: string }): Promise<void> {
   const { isHttps } = await getRequestContext();
-  const { token, absoluteExpiresAt } = await createSessionRecord(currentFingerprint());
+  const { token, absoluteExpiresAt } = await createSessionRecord(user);
   const jar = await cookies();
   jar.set(sessionCookieName(isHttps), token, {
     httpOnly: true,
@@ -57,9 +63,9 @@ export async function endSession(): Promise<void> {
   await clearSessionCookies();
 }
 
-/** Ends every session on every device. */
-export async function endAllSessions(): Promise<void> {
-  await deleteAllSessionRecords();
+/** Ends every session of this user, on every device. */
+export async function endAllSessions(userId: string): Promise<void> {
+  await deleteUserSessions(userId);
   await clearSessionCookies();
 }
 

@@ -22,7 +22,13 @@ export type PersonSummary = {
   transactionCount: number;
 };
 
+/** "owner": full access. "admin": an administrator viewing someone else's tab (read-only). */
+export type TabAccess = "owner" | "admin";
+
 export type TabDetail = {
   tab: TabSummary;
   people: PersonSummary[];
+  access: TabAccess;
+  /** The owner's name, shown to an admin viewing someone else's tab; null otherwise. */
+  ownerName: string | null;
 };

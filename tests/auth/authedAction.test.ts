@@ -8,6 +8,7 @@ vi.mock("@/lib/auth/session", () => ({ getSession: () => getSession() }));
 const { authedAction } = await import("@/lib/auth/authedAction");
 
 const schema = z.object({ name: z.string().min(1, "Name is required") });
+const SESSION = { id: "s1", user: { id: "65a000000000000000000001", name: "Klyde", email: "k@example.test", role: "user" } };
 
 beforeEach(() => {
   getSession.mockReset();
@@ -23,7 +24,7 @@ describe("authedAction", () => {
   });
 
   it("validates input and returns field errors", async () => {
-    getSession.mockResolvedValue({ id: "s1" });
+    getSession.mockResolvedValue(SESSION);
     const handler = vi.fn();
     const result = await authedAction(schema, handler)({ name: "" });
     expect(result).toEqual({
@@ -36,13 +37,13 @@ describe("authedAction", () => {
   });
 
   it("runs the handler with parsed input and the session", async () => {
-    getSession.mockResolvedValue({ id: "s1" });
-    const action = authedAction(schema, async (input, { session }) => `${input.name}:${session.id}`);
-    await expect(action({ name: "Adrian" })).resolves.toEqual({ ok: true, data: "Adrian:s1" });
+    getSession.mockResolvedValue(SESSION);
+    const action = authedAction(schema, async (input, { session, actor }) => `${input.name}:${session.id}:${actor.userId}`);
+    await expect(action({ name: "Adrian" })).resolves.toEqual({ ok: true, data: "Adrian:s1:65a000000000000000000001" });
   });
 
   it("maps DomainError to a structured failure", async () => {
-    getSession.mockResolvedValue({ id: "s1" });
+    getSession.mockResolvedValue(SESSION);
     const action = authedAction(schema, async () => {
       throw new DomainError("conflict", "Taken", { name: "Taken" });
     });
@@ -55,7 +56,7 @@ describe("authedAction", () => {
   });
 
   it("hides unexpected errors behind a generic message", async () => {
-    getSession.mockResolvedValue({ id: "s1" });
+    getSession.mockResolvedValue(SESSION);
     vi.spyOn(console, "error").mockImplementation(() => {});
     const action = authedAction(schema, async () => {
       throw new Error("connection string mongodb://secret@host leaked?");

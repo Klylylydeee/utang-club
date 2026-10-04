@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { TabList } from "@/components/tabs/TabCard";
 import { buttonStyles, cardStyles } from "@/components/ui/styles";
+import { actorFrom } from "@/lib/auth/actor";
+import { requireSession } from "@/lib/auth/session";
 import { listTabs } from "@/lib/tabs/tabService";
 
 export default async function TabsPage() {
-  const tabs = await listTabs();
+  const { user } = await requireSession();
+  const tabs = await listTabs(actorFrom(user));
   const active = tabs.filter((tab) => tab.status === "active");
   const archived = tabs.filter((tab) => tab.status === "archived");
 

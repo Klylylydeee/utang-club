@@ -1,6 +1,5 @@
 import "server-only";
 import { z } from "zod";
-import { PASSWORD_HASH_PATTERN } from "@/lib/auth/password";
 
 /**
  * Validated server-only environment, read lazily so `next build` needs no
@@ -15,11 +14,8 @@ const databaseEnvSchema = z.object({
     .regex(/^mongodb(\+srv)?:\/\//, "MONGODB_URI must start with mongodb:// or mongodb+srv://"),
 });
 
+/** Accounts live in MongoDB (D15); the env only holds the throttle key. */
 const authEnvSchema = z.object({
-  AUTH_PASSWORD_HASH: z
-    .string({ error: "AUTH_PASSWORD_HASH is required. Generate it with `pnpm hash-password`." })
-    .trim()
-    .regex(PASSWORD_HASH_PATTERN, "AUTH_PASSWORD_HASH is malformed. Regenerate it with `pnpm hash-password`."),
   AUTH_SECRET: z
     .string({ error: "AUTH_SECRET is required (at least 32 random characters)." })
     .trim()

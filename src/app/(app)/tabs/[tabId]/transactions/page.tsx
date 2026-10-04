@@ -13,15 +13,15 @@ import { listTransactions } from "@/lib/transactions/transactionService";
 export const metadata: Metadata = { title: "Transactions" };
 
 export default async function TransactionsPage({ params }: PageProps<"/tabs/[tabId]/transactions">) {
-  const { tab, people } = await loadTabOr404((await params).tabId);
-  const rows = await listTransactions(tab.id);
+  const { tab, people, actor, canEdit } = await loadTabOr404((await params).tabId);
+  const rows = await listTransactions(tab.id, actor);
   const options = people.map((person) => ({ id: person.id, displayName: person.displayName })).sort(compareByName);
 
-  if (tab.status === "archived") {
+  if (!canEdit) {
     return rows.length > 0 ? (
       <TransactionList rows={rows} people={options} />
     ) : (
-      <EmptyState title="No transactions" body="This tab was archived without any transactions." />
+      <EmptyState title="No transactions" body="Nothing was recorded in this tab." />
     );
   }
 

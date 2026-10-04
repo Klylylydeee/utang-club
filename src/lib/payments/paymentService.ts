@@ -1,5 +1,6 @@
 import "server-only";
 import { DomainError } from "@/lib/actions/result";
+import type { Actor } from "@/lib/auth/actor";
 import { calculatePairwiseSettlements } from "@/lib/settlement/calculatePairwiseSettlements";
 import { formatPhp } from "@/lib/settlement/money";
 import { balanceBetween } from "@/lib/settlement/personTotals";
@@ -14,11 +15,11 @@ import type { RecordPaymentInput } from "@/schemas/payment";
  * No existing row is changed. If it is larger than what the debtor owes,
  * it is refused until the user confirms (D1): saving it flips the balance.
  */
-export async function recordPayment(input: RecordPaymentInput): Promise<TransactionRow> {
-  await loadWritableTab(input.tabId);
+export async function recordPayment(input: RecordPaymentInput, actor: Actor): Promise<TransactionRow> {
+  await loadWritableTab(input.tabId, actor);
 
   if (!input.allowOverpayment) {
-    const rows = await listTransactions(input.tabId);
+    const rows = await listTransactions(input.tabId, actor);
     const settlements = calculatePairwiseSettlements(rows.map(toSettlementInput));
     const owed = balanceBetween(settlements, input.debtorId, input.creditorId);
     if (input.amountPhpCentavos > owed) {
@@ -30,16 +31,19 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Transact
     }
   }
 
-  return createTransaction({
-    tabId: input.tabId,
-    type: "payment",
-    description: input.description,
-    foreignCurrency: undefined,
-    foreignAmountMinor: undefined,
-    amountPhpCentavos: input.amountPhpCentavos,
-    payerId: input.debtorId,
-    recipientId: input.creditorId,
-    transactionDate: input.transactionDate,
-    notes: undefined,
-  });
+  return createTransaction(
+    {
+      tabId: input.tabId,
+      type: "payment",
+      description: input.description,
+      foreignCurrency: undefined,
+      foreignAmountMinor: undefined,
+      amountPhpCentavos: input.amountPhpCentavos,
+      payerId: input.debtorId,
+      recipientId: input.creditorId,
+      transactionDate: input.transactionDate,
+      notes: undefined,
+    },
+    actor,
+  );
 }

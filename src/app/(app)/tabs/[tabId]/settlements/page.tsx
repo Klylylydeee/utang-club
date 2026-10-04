@@ -12,10 +12,10 @@ import { pluralize } from "@/lib/text";
 export const metadata: Metadata = { title: "Settlements" };
 
 export default async function SettlementsPage({ params }: PageProps<"/tabs/[tabId]/settlements">) {
-  const { tab } = await loadTabOr404((await params).tabId);
-  const summary = await getSettlements(tab.id);
+  const { tab, actor, canEdit } = await loadTabOr404((await params).tabId);
+  const summary = await getSettlements(tab.id, actor);
   const { outstanding, settled, people } = summary;
-  const readOnly = tab.status === "archived";
+  const readOnly = !canEdit;
 
   if (outstanding.length === 0 && settled.length === 0) {
     return (

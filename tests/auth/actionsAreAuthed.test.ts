@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 /**
  * Guard rail (PHASING.md → Phase 3): every Server Action must be created
  * with authedAction(), so forgetting the session check fails the build's
- * tests instead of shipping an open endpoint. Only login is exempt.
+ * tests instead of shipping an open endpoint. Only sign-in and registration are exempt.
  */
-const ALLOWED_UNAUTHENTICATED = new Set(["src/app/login/actions.ts#login"]);
+const ALLOWED_UNAUTHENTICATED = new Set(["src/app/login/actions.ts#login", "src/app/register/actions.ts#register"]);
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

@@ -2,10 +2,12 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import type { z } from "zod";
 import { DomainError, type ActionResult } from "@/lib/actions/result";
+import { actorFrom, type Actor } from "./actor";
 import { getSession } from "./session";
 import type { ActiveSession } from "./sessionStore";
 
-export type ActionContext = { session: ActiveSession };
+/** `actor` is what services take for access checks (D15). */
+export type ActionContext = { session: ActiveSession; actor: Actor };
 
 /**
  * The only way to define a Server Action (enforced by
@@ -45,7 +47,7 @@ export function authedAction<Schema extends z.ZodType, Result>(
     }
 
     try {
-      return { ok: true, data: await handler(parsed.data, { session }) };
+      return { ok: true, data: await handler(parsed.data, { session, actor: actorFrom(session.user) }) };
     } catch (error) {
       unstable_rethrow(error); // let redirect()/notFound() through
       if (error instanceof DomainError) {

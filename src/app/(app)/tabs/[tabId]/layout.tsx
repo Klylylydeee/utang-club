@@ -11,14 +11,26 @@ export async function generateMetadata({ params }: LayoutProps<"/tabs/[tabId]">)
 }
 
 export default async function TabLayout({ children, params }: LayoutProps<"/tabs/[tabId]">) {
-  const { tab } = await loadTabOr404((await params).tabId);
+  const { tab, access, ownerName } = await loadTabOr404((await params).tabId);
   const isArchived = tab.status === "archived";
+  const adminView = access === "admin";
 
   return (
     <div className="space-y-6">
-      <Link href="/" className="-mt-4 inline-flex min-h-11 items-center text-ink-secondary hover:text-ink">
-        <span aria-hidden="true">‹&nbsp;</span>Your tabs
+      <Link
+        href={adminView ? "/admin" : "/"}
+        className="-mt-4 inline-flex min-h-11 items-center text-ink-secondary hover:text-ink"
+      >
+        <span aria-hidden="true">‹&nbsp;</span>
+        {adminView ? "All users" : "Your tabs"}
       </Link>
+
+      {adminView && (
+        <div role="status" className="rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-[15px]">
+          <span className="font-medium">Viewing {ownerName ?? "another user"}’s tab as an administrator.</span>{" "}
+          <span className="text-ink-secondary">It’s read-only; only its owner can change it.</span>
+        </div>
+      )}
 
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-3">
@@ -38,9 +50,11 @@ export default async function TabLayout({ children, params }: LayoutProps<"/tabs
         >
           <p>
             <span className="font-medium">Archived — read-only.</span>{" "}
-            <span className="text-ink-secondary">Unarchive to add or change anything.</span>
+            <span className="text-ink-secondary">
+              {adminView ? "Its owner can unarchive it." : "Unarchive to add or change anything."}
+            </span>
           </p>
-          <ArchiveToggle tabId={tab.id} archived />
+          {!adminView && <ArchiveToggle tabId={tab.id} archived />}
         </div>
       )}
 

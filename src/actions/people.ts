@@ -11,18 +11,18 @@ function revalidateTab(tabId: string) {
   revalidatePath(`/tabs/${tabId}`, "layout");
 }
 
-export const addPersonAction = authedAction(personInputSchema, async (input) => {
-  const result = await addPerson(input);
+export const addPersonAction = authedAction(personInputSchema, async (input, { actor }) => {
+  const result = await addPerson(input, actor);
   revalidateTab(input.tabId);
   return result;
 });
 
-export const renamePersonAction = authedAction(personUpdateSchema, async (input) => {
-  const { tabId } = await renamePerson(input);
+export const renamePersonAction = authedAction(personUpdateSchema, async (input, { actor }) => {
+  const { tabId } = await renamePerson(input, actor);
   revalidateTab(tabId);
 });
 
-export const deletePersonAction = authedAction(personDeleteSchema, async (input) => {
-  const { tabId } = await deletePerson(input);
+export const deletePersonAction = authedAction(personDeleteSchema, async (input, { actor }) => {
+  const { tabId } = await deletePerson(input, actor);
   revalidateTab(tabId);
 });

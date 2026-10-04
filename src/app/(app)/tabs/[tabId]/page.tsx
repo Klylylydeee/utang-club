@@ -5,8 +5,8 @@ import { cardStyles } from "@/components/ui/styles";
 import { loadTabOr404 } from "@/lib/tabs/loadTab";
 
 export default async function TabOverviewPage({ params }: PageProps<"/tabs/[tabId]">) {
-  const { tab, people } = await loadTabOr404((await params).tabId);
-  const readOnly = tab.status === "archived";
+  const { tab, people, canEdit } = await loadTabOr404((await params).tabId);
+  const readOnly = !canEdit;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">

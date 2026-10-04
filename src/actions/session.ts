@@ -13,7 +13,7 @@ export const signOut = authedAction(noInput, async () => {
   redirect(LOGIN_PATH);
 });
 
-export const signOutEverywhere = authedAction(noInput, async () => {
-  await endAllSessions();
+export const signOutEverywhere = authedAction(noInput, async (_input, { actor }) => {
+  await endAllSessions(actor.userId);
   redirect(LOGIN_PATH);
 });

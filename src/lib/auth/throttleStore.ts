@@ -1,4 +1,5 @@
 import "server-only";
+import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/db/connect";
 import { LoginThrottle } from "@/models/LoginThrottle";
 import {
@@ -22,26 +23,44 @@ async function load(key: string): Promise<ThrottleState | null> {
   };
 }
 
-/** True when this client, or logins as a whole, are currently locked out. */
-export async function isLoginLocked(clientKey: string, now = new Date()): Promise<boolean> {
+/**
+ * True when any of these keys (the device, the account being signed into)
+ * or sign-ins as a whole are locked out.
+ */
+export async function isLoginLocked(keys: readonly string[], now = new Date()): Promise<boolean> {
   await connectToDatabase();
-  const [client, global] = await Promise.all([load(clientKey), load(GLOBAL_THROTTLE_KEY)]);
-  return isLocked(client, now) || isLocked(global, now);
+  const states = await Promise.all([...keys, GLOBAL_THROTTLE_KEY].map(load));
+  return states.some((state) => isLocked(state, now));
 }
 
-/** Counts one failed attempt against both the client and the global budget. */
-export async function recordLoginFailure(clientKey: string, now = new Date()): Promise<void> {
+/** Counts one failed sign-in against each key and the global budget. */
+export async function recordLoginFailure(keys: readonly string[], now = new Date()): Promise<void> {
   await connectToDatabase();
   await Promise.all([
-    update(clientKey, now, CLIENT_POLICY),
+    ...keys.map((key) => update(key, now, CLIENT_POLICY)),
     update(GLOBAL_THROTTLE_KEY, now, GLOBAL_POLICY),
   ]);
 }
 
-/** A successful login clears this client's failures (not the global count). */
-export async function clearLoginFailures(clientKey: string): Promise<void> {
+/** A successful sign-in clears these keys' failures (not the global count). */
+export async function clearLoginFailures(keys: readonly string[]): Promise<void> {
   await connectToDatabase();
-  await LoginThrottle.deleteOne({ key: clientKey });
+  // Our own operator on server-made keys; trusted() exempts it from sanitizeFilter.
+  await LoginThrottle.deleteMany({ key: mongoose.trusted({ $in: [...keys] }) });
+}
+
+/**
+ * Registration has its own budget per device (same backoff as sign-in), so
+ * scripted sign-ups are slowed without touching the sign-in budget.
+ */
+export async function isRegistrationLocked(key: string, now = new Date()): Promise<boolean> {
+  await connectToDatabase();
+  return isLocked(await load(key), now);
+}
+
+export async function recordRegistration(key: string, now = new Date()): Promise<void> {
+  await connectToDatabase();
+  await update(key, now, CLIENT_POLICY);
 }
 
 async function update(key: string, now: Date, policy: typeof CLIENT_POLICY): Promise<void> {

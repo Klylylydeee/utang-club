@@ -5,6 +5,7 @@ import { Tab } from "@/models/Tab";
 import { Transaction } from "@/models/Transaction";
 import { startTestDatabase } from "../support/mongo";
 
+const OWNER = "65a0000000000000000000a1";
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 
 beforeAll(async () => {
@@ -22,7 +23,7 @@ describe("database connection", () => {
   });
 
   it("strips query operators from filters (sanitizeFilter)", async () => {
-    await Tab.create({ name: "Secret" });
+    await Tab.create({ name: "Secret", ownerId: OWNER });
     const injected = { name: { $ne: null } } as unknown as { name: string };
     // Wrapped as a literal `$eq` value: it either fails to cast or matches nothing.
     const leaked = await Tab.find(injected).catch(() => []);
@@ -32,13 +33,13 @@ describe("database connection", () => {
 
 describe("models", () => {
   it("defaults a tab to active PHP", async () => {
-    const tab = await Tab.create({ name: "October 2026" });
+    const tab = await Tab.create({ name: "October 2026", ownerId: OWNER });
     expect(tab.status).toBe("active");
     expect(tab.baseCurrency).toBe("PHP");
   });
 
   it("enforces unique normalized names per tab, but not across tabs", async () => {
-    const [tabA, tabB] = await Tab.create([{ name: "A" }, { name: "B" }]);
+    const [tabA, tabB] = await Tab.create([{ name: "A", ownerId: OWNER }, { name: "B", ownerId: OWNER }]);
     await Person.create({ tabId: tabA._id, displayName: "Adrian", normalizedName: "adrian" });
     await expect(
       Person.create({ tabId: tabA._id, displayName: "ADRIAN", normalizedName: "adrian" }),
@@ -49,7 +50,7 @@ describe("models", () => {
   });
 
   it("validates transactions at the model layer too", async () => {
-    const tab = await Tab.create({ name: "C" });
+    const tab = await Tab.create({ name: "C", ownerId: OWNER });
     const [adrian, klyde] = await Person.create([
       { tabId: tab._id, displayName: "Adrian", normalizedName: "adrian" },
       { tabId: tab._id, displayName: "Klyde", normalizedName: "klyde" },
