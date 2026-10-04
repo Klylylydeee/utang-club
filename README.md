@@ -23,15 +23,19 @@ See `CODEX_PROMPT.md` for the recommended first prompt to give Codex.
 -   `TESTING.md` --- test cases
 -   `PLAN.md` --- implementation milestones
 -   `PHASING.md` --- phases, working decisions, exit criteria
+-   `SETUP.md` --- how to install and run the server
 
 ## Getting started
 
-Requires Node.js 22+ and pnpm.
+**Full step-by-step guide: [SETUP.md](SETUP.md)** (environment file, database, first administrator, phone access, troubleshooting).
+
+Requires Node.js 22.18+ and pnpm.
 
 ```sh
 pnpm install
-cp .env.example .env.local   # then set MONGODB_URI
+cp .env.example .env.local   # then set MONGODB_URI and AUTH_SECRET
 pnpm db:local                # optional: local MongoDB, no install needed (leave running)
+pnpm create-admin            # once: your administrator account
 pnpm dev                     # http://localhost:3000
 ```
 
