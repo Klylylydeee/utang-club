@@ -1,244 +1,270 @@
 # Handoff — Utang Club
 
-*Last updated: 2026-10-04 (after accounts, roles and the enterprise redesign)*
+*Last updated: 2026-10-04. Pushed to <https://github.com/Klylylydeee/utang-club> (`main`).*
 
-This is a snapshot of where the build stands. `PHASING.md` holds the
-full plan, the decisions D1–D14 and the decision log. This file covers
-what exists today, what has been verified, and what's still loose.
+This is a snapshot of where the build stands, for whoever picks it up
+next. `PHASING.md` holds the plan, the decisions (D1–D18) and the
+decision log. `SETUP.md` explains how to install and run the server.
+This file covers what exists, how it was verified, what's still loose,
+and what to build next, including the recommended design for exporting
+a summary as an image or PDF.
 
 ## Status at a glance
 
 | Phase | Scope | State |
 |-------|-------|-------|
-| 0 | Repo setup | ✅ First commit made (docs plus Phases 1–4) |
-| 1 | Bootstrap (Next.js, Mongo, models, schemas, shell) | ✅ Done |
-| 2 | Settlement engine and money helpers | ✅ Done |
-| 3 | Login and security hardening | ✅ Done, docs updated |
-| 4 | Tabs and people | ✅ Done |
-| 5 | Transaction table | ✅ Done, verified in a browser (production build, phone viewport, LAN IP) |
-| 6 | Settlement cards | ✅ Done, verified in a browser (acceptance flow 1–6) |
-| 7 | Payments, plus split / copy summary / phone entry / per-person totals | ✅ Done, verified in a browser (28/28) |
-| 9 | Accounts, roles, admin area, enterprise look, activity copy (D15–D18) | ✅ Done, verified in a browser (31/31 account flows) |
-| 8 | Hardening (Playwright suite, a11y, README) | ⏭️ **Next up** |
+| 0–4 | Repo, foundation, settlement engine, security, tabs and people | ✅ Done |
+| 5 | Transaction entry (desktop spreadsheet, phone list and sheet) | ✅ Done |
+| 6 | Settlement cards, by-person totals, copy summary | ✅ Done |
+| 7 | Record payment, split a bill | ✅ Done |
+| 9 | Accounts, roles, admin area, enterprise look, activity copy (D15–D18) | ✅ Done |
+| — | **Export summary as image / PDF** | 💡 Recommended next feature (see below) |
+| 8 | Hardening: Playwright suite in the repo, a11y pass, loading/error states | ⏭️ Not started |
 
-`pnpm check` passes: typecheck, lint and **221 tests in 21 files**,
-including in-memory MongoDB tests.
+`pnpm check` passes: typecheck, lint and **242 tests in 22 files**
+(unit tests plus in-memory MongoDB tests). `pnpm build` succeeds.
+
+## What the product is now
+
+A multi-user web app for splitting shared expenses by activity (a trip,
+a night out, a dinner). Each activity is a **tab**: you add the people
+(plain names, no accounts needed), record who owes whom, and the app
+nets each pair into "who pays whom", traceable to the rows behind it.
+
+- **Users** register with email and password and see only their own
+  tabs.
+- **Administrators** also see every user's tabs (read-only) and manage
+  accounts: disable or enable, change role, set a new password. There
+  is no email of any kind.
+- **Look:** enterprise style everywhere (D18). Navy app bar, slate
+  neutrals, split-screen sign-in, admin tables. Indigo marks actions;
+  green means money coming back or settled; red means errors.
 
 ## Changes the owner asked for along the way
 
-- **"Trip" became "Tab".** Expenses are grouped by month or any period.
-  New tabs default to the current month in Manila ("October 2026"). The
-  word "tab" always means a tab of expenses; UI navigation is a
-  "section" (see `UI_SPEC.md`).
-- **The database-status card was removed** from the home page.
-- **A login with strong security was added** (D11–D13). This is an
-  explicit exception to the "no auth" line, now recorded in `AGENTS.md`.
-- **Everything must work by touch from a phone on the LAN, in dev and
-  production builds** (D14).
+- "Trip" became "Tab"; later, tabs became **per activity** instead of
+  per month. New tabs start blank.
+- A single-password login (D11–D13), later replaced by **accounts and
+  roles** (D15–D17).
+- **Everything must work by touch** from a phone on the LAN, in dev and
+  production builds (D14).
+- **Split rounding:** leftover centavos go to the debtors in name order;
+  the payer is ticked by default (`SETTLEMENT_RULES.md` → *Splitting a
+  bill*).
+- Record payment, split a bill, copy summary, phone entry, by-person
+  totals.
+- An enterprise look **everywhere**, overriding the original "not like
+  an enterprise product" line in `AGENTS.md`.
+- The account menu has only **Sign out**; "Sign out on all devices" was
+  removed. Admin disable and password reset still sign a user out
+  everywhere.
 
-## What's built
+## Where things live
 
-### Phases 1–4 (foundation, engine, access gate, tabs and people)
+| Area | Code |
+|------|------|
+| Settlement maths (pure) | `src/lib/settlement/`: engine, money, `splitAmount`, `personTotals`, ordering |
+| Settlement view model | `src/lib/settlements/`: `buildSettlementSummary`, `summaryText`, `settlementService` |
+| Tabs, people, access checks | `src/lib/tabs/tabService.ts` (`loadReadableTab` / `loadOwnedTab` / `loadWritableTab`) |
+| Transactions, splits, payments | `src/lib/transactions/`, `src/lib/payments/` |
+| Accounts | `src/lib/users/userService.ts`, `src/lib/auth/` (sessions, throttle, `authedAction`, `Actor`) |
+| Server Actions | `src/actions/` (every one wrapped in `authedAction`; a test enforces it) |
+| Pages | `src/app/(app)/` (signed in), `src/app/login`, `src/app/register` |
+| UI | `src/components/` (`ui/Sheet`, `ui/Money`, `shell/*`, `transactions/*`, `settlements/*`, `admin/*`) |
+| Setup script | `scripts/create-admin.ts` (`pnpm create-admin`) |
 
-Unchanged since the last handoff. In short:
-
-- Next.js **16.3** (App Router; `middleware.ts` is **`proxy.ts`**),
-  React 19.2, Mongoose 9, Zod 4, Tailwind 4, Vitest 5, pnpm. Read
-  `node_modules/next/dist/docs/` before touching Next.js APIs.
-- Pure settlement engine in `src/lib/settlement/` (pairwise netting,
-  signed line-item effects, four-part breakdown, ordering). Money is
-  integer centavos everywhere.
-- Owner-password gate: scrypt hash in env, MongoDB sessions, login
-  throttle, per-request CSP nonce. `authedAction()` wraps every Server
-  Action; a test fails if one isn't wrapped. `ARCHITECTURE.md` → *Access
-  gate* and README → *Sign-in* describe it.
-- Tabs and people with D5 (no removing people with transactions) and D6
-  (archived tabs are read-only) enforced on the server.
-- **Mongoose gotcha:** `sanitizeFilter` is on globally, so any query
-  operator you write yourself inside a filter value (e.g. `$in`) must be
-  wrapped in `mongoose.trusted(...)`, or it's silently neutralised.
-  Top-level `$or` and aggregation pipelines are unaffected.
-
-### Phase 5: Transaction entry
-
-- **Schemas** (`src/schemas/transaction.ts`): `transactionInputSchema`,
-  plus `transactionUpdateSchema` (same fields + `transactionId`) and
-  `transactionRefSchema`. The PHP amount and payer ≠ recipient errors
-  are reported in the same pass as the other field errors.
-- **Service** (`src/lib/transactions/transactionService.ts`): list (in
-  entry order), create, update (replaces all fields, unsets cleared
-  optional ones), delete, duplicate. Every write calls
-  `loadWritableTab()` (D6). Create and update check that payer and
-  recipient both belong to the tab, with per-field errors. Update
-  refuses to move a row to another tab.
-- **Actions** (`src/actions/transactions.ts`): four `authedAction`s;
-  each revalidates `/` and the tab layout, so counts update everywhere.
-- **DTO:** `TransactionRow` (`src/lib/transactions/types.ts`).
-- **UI** (`src/components/transactions/`):
-  - `TransactionTable` (client): the spreadsheet. Enter on the entry row
-    adds it and focuses a fresh entry row. Saved rows save when focus
-    leaves the row. Enter moves down, ↑/↓ move between rows in text
-    columns, and Escape reverts an unsaved edit.
-  - Per-row status says Unsaved / Saving / Saved / Not saved, as text
-    plus a glyph.
-  - Optimistic create/duplicate/delete use `useOptimistic`; a failed
-    delete visibly puts the row back.
-  - Unsaved input is mirrored to `sessionStorage` and restored, so it
-    survives reloads, section switches and an expired session.
-  - The same Zod schema runs in the browser (`validateRow.ts`) for
-    instant field errors.
-  - Foreign-currency columns stay hidden until "Add foreign currency"
-    is pressed or any row uses them.
-  - `TransactionList` (server): read-only table for archived tabs.
-  - `rowValues.ts`: pure helpers between `TransactionRow` and the
-    strings in the inputs. `minorToInputString` (in `money.ts`) formats
-    `1,234.56` without floats.
-- **Page:** `src/app/(app)/tabs/[tabId]/transactions/page.tsx` shows
-  "Add people first" when the tab has fewer than two people.
-- The decisions behind the save/rollback behaviour are in `PHASING.md`
-  → decision log, 2026-10-04 (Phase 5).
+**Rules that bite**
+- **Access:** every service takes an `Actor` and checks access itself. A
+  tab the actor may not see is "not found", never "forbidden". Add a case
+  to `tests/db/access.test.ts` for any new read or write.
+- **Mongoose:** `sanitizeFilter` is on globally, so your own operators
+  inside a filter value (e.g. `$in`) need `mongoose.trusted(...)`, or
+  they're silently neutralised. Aggregation pipelines are unaffected.
+- **React:** when alternative footers or confirm rows replace each
+  other in the same slot, give each variant a `key`. Otherwise React
+  reuses a `type="button"` as a `type="submit"` mid-click and the form
+  submits.
+- **Forms:** don't disable a submit button based on client state that
+  only exists after hydration (a phone that types before scripts load
+  gets stuck). Validate on submit instead.
+- **Next.js 16:** `middleware.ts` is `proxy.ts`. Page files may only
+  export what Next allows. Read `node_modules/next/dist/docs/` first.
 
 ## How it was verified
 
-- **`pnpm check`**: everything above, plus new tests for the update and
-  ref schemas, `minorToInputString`, row-value helpers and client
-  validation, and `tests/db/transactionService.test.ts`. The DB tests
-  cover CRUD, people from another tab (per field), archived tabs,
-  duplicate descriptions, cross-tab moves, and D5 once rows exist.
-- **`pnpm build`** succeeds.
-- **Browser flow, Phase 5 (39/39 passed):**
-  - **Setup:** a production build (`next start`) on port 3217, opened
-    via the LAN IP in Edge at a 390×844 touch viewport. It used
-    temporary credentials passed through env vars and a throwaway
-    `utang-club-e2e` database, which was dropped afterwards.
-  - **Covered:**
-    - the empty state with fewer than two people
-    - adding rows by Enter and by tapping Add
-    - each validation error showing next to its field
-    - autosave when leaving a row; edits that survive a reload
-    - arrow-key movement and Escape
-    - duplicate, and delete with confirmation
-    - foreign columns
-    - unsaved input restored after a reload
-    - an expired session mid-edit (edit kept, sign-in link, retry
-      saves after signing in again)
-    - tab-list counts, now confirmed against an empty database, which
-      resolves the open Phase 4 check
-    - the archived read-only table
-    - 44 px / hit-testable audits on every state
-    - zero console errors and zero CSP violations
-  - **Bug found and fixed:** on phones the whole page was 823 px wide,
-    because absolutely-positioned `sr-only` text escaped the table's
-    scroll box. The scroll box is now `relative`.
-  - **Where the scripts are:** `phase5.mjs` is in this session's
-    scratchpad, and the Phase 4 `flow.mjs` with its `playwright-core`
-    install is in an earlier session's scratchpad. Neither is in the
-    repo; see loose end 4.
-- **Still not verified:** a real phone, the `pnpm hash-password`
-  prompt itself, and the production `Cache-Control` header (not
-  checked this time).
+- **Automated:** `pnpm check` covers:
+  - money and engine edge cases (reciprocal debts, zero balances,
+    decimals, duplicate descriptions, payments);
+  - split rounding and per-person totals;
+  - schemas and services against an in-memory MongoDB;
+  - sessions and throttling;
+  - **authorization**: another user can't read or change a tab by id;
+    an admin can read but not write.
+- **Browser runs:** production builds over the LAN IP, in Edge (and
+  WebKit for the phone sheet), phone and desktop sizes:
+
+  | Area | Result |
+  |------|--------|
+  | Transactions | 39/39 |
+  | Settlements | 13/13 |
+  | Payments, split and phone entry | 28/28 |
+  | Account flows | 31/31 |
+  | Sign out | 9/9 |
+  | Phone sheet (WebKit and Chromium) | 10/10 |
+
+  Every run included touch audits (44 px, hit-testable, no sideways
+  page scroll) and found zero console or CSP errors.
+- **Scripts aren't in the repo.** They live in session scratchpad folders
+  under `%LOCALAPPDATA%\Temp\claude\c--utang-club\` and will be lost.
+  The `playwright-core` install, with WebKit, is in an earlier session's
+  `scratchpad/e2e`. Porting them is Phase 8.
+- **Not verified:** a real phone. The phone sheet was rebuilt after the
+  owner reported it sat at the bottom and misbehaved. Emulation can't
+  show an on-screen keyboard, so the keyboard behaviour (the likely
+  cause) still needs a check on the owner's phone.
 
 ## Loose ends
 
-1. **The local database (`.data/`) contains test tabs** from the
-   Phase 4 browser runs. Wipe it before real use: stop `pnpm db:local`
-   and delete `.data/mongo`.
-2. **Set up accounts:** add `AUTH_SECRET` to `.env.local` (any 32+ random
-   characters) and run `pnpm create-admin` with your email (README →
-   Accounts). It promotes or creates your admin account and assigns your
-   existing tabs to it. `AUTH_PASSWORD_HASH` is no longer used and can be
-   deleted from `.env.local`.
-3. **A dev server was already running on port 3000** during this
-   session (not started by the agent), and another project's dev server
-   was on port 3100. Use a free port for test servers.
-4. **Port the browser flows into the repo** as the Phase 8 Playwright
-   suite (`TESTING.md` → *External-device and touch tests*). It needs:
-   - `@playwright/test`
-   - the LAN IP as `baseURL`
-   - the touch audit that skips disabled controls, controls inside
-     closed `<details>`, and anything off screen
-   - a check that `innerWidth` stays at the device width, because a
-     too-wide page makes mobile browsers zoom out and hides the problem
-5. **Known limitation:** without a trusted reverse proxy, the client IP
-   for the throttle comes from `x-forwarded-for` and can be spoofed. The
-   global throttle is the backstop.
-6. **Not built yet:** columns for notes and transaction date (both are
-   stored and preserved through edits).
+1. **Owner setup:** run `pnpm create-admin` with their email (`SETUP.md`
+   step 5). Their `.env.local` still contains `ACTION_ALLOWED_ORIGINS=*`.
+   That should be emptied, more so now that registration is open.
+2. **Local data:** `.data/mongo` holds test tabs from early runs. Wipe it
+   for a clean start (`SETUP.md` → *Starting fresh*).
+3. **Port conflicts on the owner's machine:** a MongoDB Windows service
+   had been listening on 27017 alongside `pnpm db:local`. `db:local` now
+   refuses to start a duplicate and explains why.
+4. **Hydration race:** forms without a Server Action `action` (e.g. new
+   tab) do a plain page reload if submitted before scripts load. That's
+   rare by hand, but converting them to progressive-enhancement forms
+   would remove it.
+5. **Nav highlight:** when an admin views someone else's tab, the top
+   bar highlights "Tabs" rather than "Admin". The breadcrumb is correct.
+6. **Known limitations:**
+   - Throttling trusts `x-forwarded-for` (spoofable without a trusted
+     proxy); the global limit is the backstop.
+   - Registration is open to anyone who can reach the app.
+   - No audit history of edits and deletes.
+   - No notes or date columns, though both are stored.
+7. **Open with the owner:** a payment in the reverse direction *adds*
+   to the debt (`SETTLEMENT_RULES.md` → *Clarifications*). This has
+   never been explicitly confirmed.
 
-### Phase 6: Settlement summary (added after this file's Phase 5 snapshot)
+## Recommendation: export the summary as an image or PDF
 
-- `src/lib/settlements/buildSettlementSummary.ts` (pure, unit-tested)
-  turns rows + people into `SettlementCard`s (`types.ts`) via the
-  engine. `settlementService.getSettlements(tabId)` loads and calls it.
-- `src/components/settlements/SettlementCardView.tsx`: a server-rendered
-  `<details>` card: "Adrian → Klyde ₱23.03", expanding to each row with
-  "Offset" / "Payment" / "Paid back" labels, signed amounts and an
-  Owed / Offsets and payments / Outstanding summary.
-- The Settlements page shows outstanding cards in a grid, with settled
-  pairs folded under "Settled (n pairs)".
-- Verified: `tests/settlements/` and `tests/db/settlementService.test.ts`,
-  plus a browser run of acceptance criteria 1–6 on the production build
-  at phone width (13/13; touch audit clean; no console or CSP errors).
+The owner wants to share a tab's result outside the app. Today there is
+**Copy summary** (plain text). The recommendation, in priority order:
 
-### Phase 7 and owner requests
+### 1. Share as image (PNG): build this first
 
-- **Record payment:** a button on each outstanding card opens a sheet
-  prefilled with the amount owed (`RecordPaymentButton` →
-  `recordPaymentAction` → `paymentService`). Overpaying needs
-  "Save anyway" (D1).
-- **Split a bill:** on the Transactions page (`SplitBillButton` →
-  `splitExpenseAction` → `splitService`), with a live preview from the
-  same pure `splitAmount` the server uses.
-- **Copy summary:** on the Settlements page (`CopySummaryButton`, text
-  from `buildSummaryText`).
-- **Phone entry:** `MobileTransactionList` + `TransactionSheet` below
-  `md`.
-- **By person:** a section on Settlements (`PersonTotalsList`, data
-  from `calculatePersonTotals`).
-- Shared `Sheet` (native `<dialog>`, a bottom sheet on phones) and
-  `Field` helpers live in `src/components/ui/`.
-- Browser run (production build, phone width, LAN IP): 28/28. It
-  covered acceptance criterion 5, a touch audit of every sheet, and
-  two regression checks for the keyed-footer bug (see the `PHASING.md`
-  decision log).
+Group chats (Messenger, Viber) are where the summary goes. An image
+reads well there, can't be garbled by chat formatting, and looks
+deliberate.
 
-### Accounts, roles and the enterprise look (D15–D18)
+**What the image shows** (1080 px wide, height grows with content):
+- A navy header with the tab name and "as of 4 October 2026"
+  (Asia/Manila).
+- Each outstanding pair as a line: "Bea ⟶ Dave ₱642.75".
+- **By person** nets: "Klyde gets back ₱759.50", "Dave pays ₱357.25".
+- A small footer: "N settled pairs · Made with Utang Club".
+- If there are many pairs, cap at about 20 lines plus "and N more"; a
+  very long image is unreadable in chat.
+- **Default:** no individual transactions, no settled pairs. The owner
+  was asked about both and hasn't answered; confirm before building.
 
-- **Accounts:** `/register` and `/login` with email and password
-  (`src/app/register`, `src/app/login`). `User` model, sessions per
-  user (`src/lib/auth/sessionStore.ts`), `src/lib/users/userService.ts`.
-- **Access:** every service takes an `Actor`. Owners read and write;
-  admins read any tab and write only their own; anyone else gets "not
-  found". See `tests/db/access.test.ts`.
-- **Admin:** `/admin` (users table) and `/admin/users/[id]` (their tabs;
-  disable, role, set password). An admin viewing someone's tab sees a
-  read-only banner and a breadcrumb back to that user.
-- **Setup:** `pnpm create-admin` (replaces `pnpm hash-password`).
-- **Look:** navy app bar with Tabs / Admin and a user menu, `PageHeader`
-  with breadcrumbs, underline section tabs, 10/8 px radii, split-screen
-  sign-in and registration (`AuthLayout`).
-- **Copy:** tabs are per activity (trip, night out, dinner); new tabs
-  start blank.
+**How**
+- A route handler at
+  `src/app/(app)/tabs/[tabId]/settlements/image/route.ts` returning
+  `ImageResponse` from `next/og`. It's built into Next 16; read
+  `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/image-response.md`.
+- **Access:** route handlers don't run the `(app)` layout. The handler
+  must call `getSession()` itself, build the `Actor`, and call
+  `getSettlements(tabId, actor)`, which already enforces access. Return
+  a 404 for anything not visible, the same as the pages. Send
+  `Cache-Control: private, no-store`.
+- **Data:** reuse `getSettlements` and `buildSummaryText`'s inputs (or a
+  small pure `buildShareModel` next to it, unit-tested). Format with
+  `formatPhp`. No arithmetic in the route.
+- **Fonts:** `ImageResponse` takes only ttf/otf/woff and has a 500 KB
+  limit. Next bundles **Geist Regular**, whose character map covers
+  **₱**; render once to confirm the glyph actually appears. For a bold
+  weight, add one OFL font file (e.g. Geist SemiBold or Inter SemiBold)
+  under `src/assets/fonts/` and read it at module scope.
+- **Button:** "Share image" on Settlements, next to Copy summary:
+  - It fetches the PNG.
+  - If `navigator.canShare({ files: [file] })`, it calls
+    `navigator.share` to open the phone's share sheet straight to
+    Messenger or Viber.
+  - Otherwise it downloads the file through an object URL and
+    `<a download>`.
+  - **Over plain-HTTP LAN the Web Share API doesn't exist**, so it will
+    always download there. On iPhone the image opens and the user
+    long-presses to save or share. Tell the owner this, and that it
+    becomes one tap once the app is behind HTTPS.
+- **Tests:**
+  - The pure share model (unit).
+  - Route access: 200 `image/png` for the owner and an admin; 404 for
+    another user and for signed-out requests.
+  - A browser check that the image downloads and the button passes the
+    touch audit.
 
-## Next: Phase 8, hardening
+### 2. PDF: use a print layout, not a PDF library
 
-- Port the scratchpad browser scripts (`phase5.mjs`, `phase6.mjs`,
-  `phase7.mjs` in this session's scratchpad) into a committed
-  Playwright suite before they're lost.
-- `loading.tsx` / `error.tsx` states, an accessibility pass, README.
-- Still recommended from the review: backups, an audit trail for edits
-  and deletes, removing `ACTION_ALLOWED_ORIGINS=*`, and confirming the
-  reverse-payment rule.
+For people who want a document (records, reimbursement), add **Print /
+Save as PDF** rather than generating PDFs on the server.
+
+- **`@media print` styles:**
+  - Hide the app bar, section nav, buttons and banners.
+  - Black on white, with the tab name, date and owner at the top.
+  - Avoid page breaks inside a pair (`break-inside: avoid`).
+- **Expand everything for print.** Cards are `<details>`, so on
+  `beforeprint` set every one to `open`, and restore on `afterprint`.
+  Include the line items in print; paper is where the full detail
+  belongs.
+- **Button:** calls `window.print()`. This works on desktop and phones;
+  on iPhone, Share → Print → pinch out gives a PDF.
+- **Why not a library:** headless-browser PDF (Playwright/Puppeteer)
+  means a large dependency and an emulated Chromium on this Windows ARM
+  machine. `@react-pdf/renderer` or `pdfkit` means a second layout to
+  keep in sync, plus font work for ₱. The print stylesheet costs a few
+  dozen lines and stays in sync with the page automatically.
+
+### 3. CSV export: small and optional
+
+"Download CSV" of every transaction plus the pair totals, for
+spreadsheets.
+- A route handler with the same access rule as the image.
+- RFC 4180 quoting.
+- **Formula-injection guard:** prefix a `'` to any cell starting with
+  `=`, `+`, `-` or `@`, since descriptions are user text.
+- Amounts as plain decimals (`1234.56`) from `minorToDecimalString`.
+
+**Suggested order:** image (most useful for the owner's group chats),
+then the print layout, then CSV if anyone asks.
+
+## Next after export: Phase 8, hardening
+
+- Port the browser scripts into a committed Playwright suite
+  (`@playwright/test`):
+  - LAN IP as `baseURL`;
+  - Chromium and WebKit projects;
+  - the touch audit, which skips disabled controls, closed `<details>`
+    and off-screen elements;
+  - an `innerWidth` check;
+  - **wait for page content, not the "load" event** (WebKit doesn't
+    fire "load" for in-app navigation);
+  - **reset the database between runs**, because the registration limit
+    (5 per device per 15 minutes) trips repeated runs.
+- `loading.tsx` / `error.tsx`, an accessibility pass, and backups (a
+  dated `mongodump` script).
 
 ## Running it
 
+See **`SETUP.md`**. In short:
+
 ```sh
 pnpm install
-pnpm db:local          # terminal 1: local MongoDB (leave running)
-pnpm hash-password     # once; paste AUTH_PASSWORD_HASH and AUTH_SECRET into .env.local
-pnpm dev               # terminal 2: http://localhost:3000 or http://<LAN-IP>:3000
-pnpm check             # typecheck + lint + tests
+pnpm db:local        # terminal 1, leave running
+pnpm create-admin    # once
+pnpm dev             # terminal 2: http://localhost:3000 or http://<LAN-IP>:3000
+pnpm check           # typecheck + lint + tests
 ```
-
-On a phone, open `http://<LAN-IP>:3000` on the same Wi-Fi. If Windows
-Firewall asks about Node.js, allow it on private networks only.
