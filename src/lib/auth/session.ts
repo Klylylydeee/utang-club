@@ -7,7 +7,6 @@ import { getRequestContext } from "./requestContext";
 import {
   createSessionRecord,
   deleteSessionRecord,
-  deleteUserSessions,
   findActiveSession,
   type ActiveSession,
 } from "./sessionStore";
@@ -63,11 +62,6 @@ export async function endSession(): Promise<void> {
   await clearSessionCookies();
 }
 
-/** Ends every session of this user, on every device. */
-export async function endAllSessions(userId: string): Promise<void> {
-  await deleteUserSessions(userId);
-  await clearSessionCookies();
-}
 
 async function clearSessionCookies(): Promise<void> {
   const jar = await cookies();

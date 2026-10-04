@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { signOut, signOutEverywhere } from "@/actions/session";
+import { signOut } from "@/actions/session";
 import type { SessionUser } from "@/lib/auth/actor";
 
 /** Native <details> menu on the navy bar: keyboard- and touch-friendly, no hover needed. */
@@ -17,10 +17,10 @@ export function AccountMenu({ user }: { user: SessionUser }) {
     .map((part) => part[0]?.toUpperCase())
     .join("");
 
-  const run = (action: typeof signOut) =>
+  const run = () =>
     startTransition(async () => {
       setError(null);
-      const result = await action(undefined);
+      const result = await signOut(undefined);
       // Only reached when the action did not redirect.
       if (!result.ok) {
         if (result.code === "unauthenticated") router.replace("/login");
@@ -54,18 +54,10 @@ export function AccountMenu({ user }: { user: SessionUser }) {
         <button
           type="button"
           disabled={isPending}
-          onClick={() => run(signOut)}
+          onClick={run}
           className="mt-1 flex min-h-11 w-full items-center rounded-lg px-3 text-left hover:bg-accent-soft disabled:opacity-60"
         >
           Sign out
-        </button>
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={() => run(signOutEverywhere)}
-          className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-negative hover:bg-accent-soft disabled:opacity-60"
-        >
-          Sign out on all devices
         </button>
         {error && (
           <p role="alert" className="px-3 py-2 text-sm text-negative">

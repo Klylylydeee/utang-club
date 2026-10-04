@@ -86,7 +86,7 @@ export async function deleteSessionRecord(token: string): Promise<void> {
   await Session.deleteOne({ tokenHash: hashSessionToken(token) });
 }
 
-/** Signs one user out everywhere (their own "sign out on all devices", or an admin action). */
+/** Signs one user out everywhere (when an admin disables them or sets a new password). */
 export async function deleteUserSessions(userId: string): Promise<void> {
   await connectToDatabase();
   await Session.deleteMany({ userId: new Types.ObjectId(userId) });

@@ -65,7 +65,7 @@ signs them out everywhere). Administrators can't change their own
 account, so there is always at least one active administrator.
 
 **Signing out:** the account menu (your initials, top right) has "Sign
-out" (this device) and "Sign out on all devices".
+out", which signs out this device.
 
 **Lockouts:** 5 failed sign-ins in 15 minutes from one device, or for one
 account, lock that device or account out (5 minutes, doubling up to 1
