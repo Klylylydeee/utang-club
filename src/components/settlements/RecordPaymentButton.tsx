@@ -65,7 +65,7 @@ export function RecordPaymentButton(props: {
 
   return (
     <>
-      <button type="button" onClick={openSheet} className={`${buttonStyles.secondary} w-full`}>
+      <button type="button" onClick={openSheet} className={`${buttonStyles.tinted} w-full`}>
         Record payment
       </button>
       <Sheet

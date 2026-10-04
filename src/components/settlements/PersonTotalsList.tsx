@@ -1,6 +1,5 @@
-import { formatPhp } from "@/lib/settlement/money";
+import { Money } from "@/components/ui/Money";
 import type { PersonTotalView } from "@/lib/settlements/types";
-import { describeNet } from "@/lib/settlements/summaryText";
 
 /**
  * Each person across all their pairs. Only sums of the cards above: no
@@ -8,31 +7,34 @@ import { describeNet } from "@/lib/settlements/summaryText";
  */
 export function PersonTotalsList({ people }: { people: PersonTotalView[] }) {
   return (
-    <ul className="divide-y divide-separator rounded-2xl border border-separator bg-raised shadow-raised">
+    <ul className="divide-y divide-separator rounded-[20px] border border-separator bg-raised">
       {people.map((total) => {
         const square = total.netCentavos === 0;
         const getsBack = total.netCentavos > 0;
         return (
-          <li key={total.person.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3.5">
+          <li key={total.person.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
             <div className="min-w-0">
               <p className="font-medium break-words">{total.person.displayName}</p>
               {!square && (
-                <p className="text-sm text-ink-secondary tabular-nums">
-                  Owes {formatPhp(total.owesCentavos)} · Is owed {formatPhp(total.owedCentavos)}
+                <p className="text-[13px] text-ink-secondary">
+                  Owes <Money centavos={total.owesCentavos} />, is owed <Money centavos={total.owedCentavos} />
                 </p>
               )}
             </div>
-            <p className={`text-right tabular-nums ${square ? "text-ink-secondary" : "font-semibold"} ${getsBack ? "text-positive" : ""}`}>
-              <span aria-hidden="true">{square ? "✓ " : getsBack ? "↓ " : "↑ "}</span>
-              {square ? "Square" : capitalize(describeNet(total.netCentavos))}
-            </p>
+            {square ? (
+              <p className="shrink-0 text-ink-secondary">Square</p>
+            ) : (
+              <p className={`shrink-0 text-right ${getsBack ? "text-positive" : ""}`}>
+                <span className="block text-[13px] text-ink-secondary">{getsBack ? "Gets back" : "Pays"}</span>
+                <Money
+                  centavos={getsBack ? total.netCentavos : -total.netCentavos}
+                  className="text-[20px] font-semibold tracking-tight"
+                />
+              </p>
+            )}
           </li>
         );
       })}
     </ul>
   );
-}
-
-function capitalize(text: string) {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }

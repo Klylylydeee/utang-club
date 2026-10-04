@@ -69,7 +69,7 @@ export default async function SettlementsPage({ params }: PageProps<"/tabs/[tabI
               By person
             </h2>
             <p className="text-sm text-ink-secondary">
-              Each person’s pairs added up. Payments still go pair by pair, as shown above.
+              Each person’s pairs added up. Payments still go pair by pair.
             </p>
           </div>
           <PersonTotalsList people={people} />

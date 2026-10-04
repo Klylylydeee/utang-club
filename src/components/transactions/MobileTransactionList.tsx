@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { buttonStyles } from "@/components/ui/styles";
-import { formatPhp } from "@/lib/settlement/money";
+import { Money } from "@/components/ui/Money";
 import type { TransactionRow } from "@/lib/transactions/types";
 import { toRowValues } from "./rowValues";
 import { TransactionSheet, type SheetTarget } from "./TransactionSheet";
@@ -62,7 +62,7 @@ export function MobileTransactionList(props: {
                       </span>
                     </span>
                   </span>
-                  <span className="shrink-0 font-medium tabular-nums">{formatPhp(row.amountPhpCentavos)}</span>
+                  <Money centavos={row.amountPhpCentavos} className="shrink-0 font-medium" />
                 </button>
               </li>
             );

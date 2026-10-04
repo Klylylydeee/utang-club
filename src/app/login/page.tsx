@@ -32,7 +32,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           <p className="text-ink-secondary">Sign in to see who owes whom.</p>
         </div>
 
-        <div className="space-y-5 rounded-2xl border border-separator bg-raised p-6 shadow-raised">
+        <div className="space-y-5 rounded-[20px] border border-separator bg-raised p-6 shadow-raised">
           {configured ? (
             <LoginForm next={next} />
           ) : (

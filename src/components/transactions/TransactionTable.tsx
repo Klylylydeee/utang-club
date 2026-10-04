@@ -239,6 +239,10 @@ export function TransactionTable(props: {
         // Keep anything typed while the save was in flight.
         setDrafts((current) => (current[row.key] === values ? without(current, row.key) : current));
         setSaveState(row.key, { kind: "saved" });
+        // "Saved" is a confirmation, not a permanent label: clear it after a moment.
+        window.setTimeout(() => {
+          setSaveStates((states) => (states[row.key]?.kind === "saved" ? without(states, row.key) : states));
+        }, 2500);
       } else {
         setSaveState(row.key, { kind: "error", failure: result });
       }
@@ -383,7 +387,7 @@ export function TransactionTable(props: {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-ink-secondary">
+        <p className="text-[13px] text-ink-secondary">
           Press <kbd className="font-sans font-medium">Enter</kbd> to add a row. Edits save when you leave a row.
         </p>
         <div className="flex flex-wrap gap-2">

@@ -9,6 +9,8 @@ const buttonBase =
 export const buttonStyles = {
   primary: `${buttonBase} bg-accent text-accent-ink hover:bg-accent-hover`,
   secondary: `${buttonBase} border border-separator bg-raised text-ink hover:bg-accent-soft`,
+  /** The action on a card: accent text on a soft accent wash. */
+  tinted: `${buttonBase} bg-accent-soft text-accent hover:bg-accent hover:text-accent-ink`,
   quiet: `${buttonBase} text-ink-secondary hover:bg-accent-soft hover:text-ink`,
   danger: `${buttonBase} border border-separator bg-raised text-negative hover:bg-accent-soft`,
 } as const;
@@ -28,4 +30,5 @@ export const cellInputStyles =
 export const iconButtonStyles =
   "inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-accent-soft hover:text-ink active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50";
 
-export const cardStyles ="rounded-2xl border border-separator bg-raised shadow-raised";
+/** Containers use a 20px radius; controls 12px (rounded-xl); chips are fully round. */
+export const cardStyles = "rounded-[20px] border border-separator bg-raised shadow-raised";

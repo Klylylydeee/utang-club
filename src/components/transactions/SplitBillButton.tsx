@@ -88,7 +88,7 @@ export function SplitBillButton({ tabId, people }: { tabId: string; people: Pers
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={buttonStyles.secondary}>
-        <span aria-hidden="true">÷</span> Split a bill
+        Split a bill
       </button>
       <Sheet
         open={open}

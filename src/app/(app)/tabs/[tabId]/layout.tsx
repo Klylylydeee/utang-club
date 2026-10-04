@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArchiveToggle } from "@/components/tabs/ArchiveToggle";
 import { SectionNav } from "@/components/tabs/SectionNav";
-import { StatusBadge } from "@/components/tabs/TabCard";
+import { StatusBadge, tabCounts } from "@/components/tabs/TabCard";
 import { loadTabOr404 } from "@/lib/tabs/loadTab";
-import { pluralize } from "@/lib/text";
 
 export async function generateMetadata({ params }: LayoutProps<"/tabs/[tabId]">): Promise<Metadata> {
   const { tab } = await loadTabOr404((await params).tabId);
@@ -28,7 +27,7 @@ export default async function TabLayout({ children, params }: LayoutProps<"/tabs
         </div>
         {tab.description && <p className="max-w-prose text-ink-secondary">{tab.description}</p>}
         <p className="text-sm text-ink-secondary">
-          {pluralize(tab.participantCount, "person", "people")} · {pluralize(tab.transactionCount, "transaction")}
+          {tabCounts(tab)}
         </p>
       </header>
 

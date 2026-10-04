@@ -168,22 +168,22 @@ export function TransactionRowView(props: Props) {
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p id={id} className="px-2.5 pt-1 pb-1 text-sm text-negative">
+    <p id={id} className="px-2.5 pt-1 pb-1 text-[13px] leading-snug text-negative">
       {message}
     </p>
   );
 }
 
 const STATUS_TEXT: Record<Exclude<RowStatusView, "idle">, { glyph: string; text: string; className: string }> = {
-  unsaved: { glyph: "•", text: "Unsaved", className: "text-ink-secondary" },
+  unsaved: { glyph: "●", text: "Unsaved", className: "text-ink-secondary" },
   saving: { glyph: "…", text: "Saving", className: "text-ink-secondary" },
   saved: { glyph: "✓", text: "Saved", className: "text-positive" },
-  error: { glyph: "!", text: "Not saved", className: "font-medium text-negative" },
+  error: { glyph: "●", text: "Not saved", className: "text-negative" },
 };
 
 function StatusLabel({ status }: { status: RowStatusView }) {
   return (
-    <span role="status" className="min-w-16 text-right text-sm whitespace-nowrap">
+    <span role="status" className="min-w-16 text-right text-[13px] whitespace-nowrap">
       {status !== "idle" && (
         <span className={STATUS_TEXT[status].className}>
           <span aria-hidden="true">{STATUS_TEXT[status].glyph} </span>

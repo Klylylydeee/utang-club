@@ -512,3 +512,23 @@ Record changes to D1--D13 and any new decisions here, with dates.
         then submits the form ("Keep editing" saved the edit). Footer
         variants are now keyed. Watch for this pattern anywhere a
         confirm row replaces a form's buttons.
+-   2026-10-04 --- Design pass (owner asked to "fix all the UI" with the
+    frontend-design skill). Within the AGENTS.md brief (system fonts,
+    neutral surfaces, one accent):
+    -   **Accent is ballpen blue** (`#3341a8` light, `#8e9bff` dark),
+        after the blue ink of the listahan (the utang notebook), for
+        actions only. Green now means only "money comes back / settled";
+        red only errors and destructive actions. Before, one green meant
+        "Add", "Gets back" and "Settled".
+    -   **Amounts lead:** a `Money` component sets the ₱ smaller and
+        quieter with tabular figures. The settlement card amount (34px)
+        is the one bold element; the card names read as a sentence with
+        a drawn arrow.
+    -   **Hierarchy over identical cards:** outstanding cards are raised;
+        settled cards lie flat. The tab list and "By person" are grouped
+        lists. Radii by tier: containers 20px, controls 12px, chips
+        round.
+    -   Smaller fixes: "Saved" clears after 2.5 s; calmer "Not saved"
+        and field-error text; one chevron for every `<select>`; no empty
+        gap on the login card; counts read "4 people, 8 transactions"
+        (no middle dots); the ↑↓ and ÷ glyphs are gone.
