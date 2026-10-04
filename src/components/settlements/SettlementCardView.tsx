@@ -2,83 +2,97 @@ import { minorUnitsFor } from "@/lib/currency";
 import { formatForeign, formatPhp } from "@/lib/settlement/money";
 import type { SettlementCard, SettlementLine } from "@/lib/settlements/types";
 import { pluralize } from "@/lib/text";
+import { RecordPaymentButton } from "./RecordPaymentButton";
 
 /**
  * One pair: who owes whom, and how much. Expands (native <details>, so it
  * works by touch and keyboard without JavaScript) to the rows behind it.
+ * Outstanding cards on a writable tab get a "Record payment" footer.
  */
-export function SettlementCardView({ card }: { card: SettlementCard }) {
+export function SettlementCardView({ card, tabId, readOnly }: { card: SettlementCard; tabId: string; readOnly: boolean }) {
   const settled = card.status === "settled";
   const { debtor, creditor } = card;
 
   return (
-    <details className="group/card rounded-2xl border border-separator bg-raised shadow-raised">
-      <summary className="flex min-h-11 list-none flex-col gap-3 rounded-2xl p-5 [&::-webkit-details-marker]:hidden">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="min-w-0 text-[17px] font-semibold break-words">
+    <article className="rounded-2xl border border-separator bg-raised shadow-raised">
+      <details className="group/card">
+        <summary className="flex min-h-11 list-none flex-col gap-3 rounded-2xl p-5 [&::-webkit-details-marker]:hidden">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="min-w-0 text-[17px] font-semibold break-words">
+              {settled ? (
+                <>
+                  {debtor.displayName} <span className="font-normal text-ink-secondary">&amp;</span> {creditor.displayName}
+                </>
+              ) : (
+                <>
+                  {debtor.displayName}{" "}
+                  <span aria-hidden="true" className="text-ink-secondary">
+                    →
+                  </span>
+                  <span className="sr-only">owes</span> {creditor.displayName}
+                </>
+              )}
+            </h3>
+            <span
+              aria-hidden="true"
+              className="mt-0.5 shrink-0 text-ink-secondary transition-transform group-open/card:rotate-180"
+            >
+              ▾
+            </span>
+          </div>
+          <div className="flex items-end justify-between gap-3">
             {settled ? (
-              <>
-                {debtor.displayName} <span className="font-normal text-ink-secondary">&amp;</span> {creditor.displayName}
-              </>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-sm font-medium text-positive">
+                <span aria-hidden="true">✓</span> Settled
+              </span>
             ) : (
+              <p className="text-2xl font-semibold tracking-tight tabular-nums">{formatPhp(card.amountPhpCentavos)}</p>
+            )}
+            <p className="text-sm text-ink-secondary">
+              {pluralize(card.lines.length, "transaction")}
+              <span className="sr-only">. Show details.</span>
+            </p>
+          </div>
+        </summary>
+  
+        <div className="border-t border-separator px-5 pt-2 pb-5">
+          <ul aria-label={`Transactions between ${debtor.displayName} and ${creditor.displayName}`}>
+            {card.lines.map((line) => (
+              <LineItem key={line.transactionId} line={line} card={card} />
+            ))}
+          </ul>
+  
+          <dl className="mt-3 space-y-1.5 border-t border-separator pt-3 text-sm">
+            {card.reducedCentavos > 0 && (
               <>
-                {debtor.displayName}{" "}
-                <span aria-hidden="true" className="text-ink-secondary">
-                  →
-                </span>
-                <span className="sr-only">owes</span> {creditor.displayName}
+                <div className="flex justify-between gap-3">
+                  <dt className="text-ink-secondary">Owed</dt>
+                  <dd className="tabular-nums">{formatPhp(card.owedCentavos)}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-ink-secondary">Offsets and payments</dt>
+                  <dd className="tabular-nums">−{formatPhp(card.reducedCentavos)}</dd>
+                </div>
               </>
             )}
-          </h3>
-          <span
-            aria-hidden="true"
-            className="mt-0.5 shrink-0 text-ink-secondary transition-transform group-open/card:rotate-180"
-          >
-            ▾
-          </span>
+            <div className="flex justify-between gap-3 text-base font-semibold">
+              <dt>{settled ? "Balance" : "Outstanding"}</dt>
+              <dd className="tabular-nums">{formatPhp(card.amountPhpCentavos)}</dd>
+            </div>
+          </dl>
         </div>
-        <div className="flex items-end justify-between gap-3">
-          {settled ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-sm font-medium text-positive">
-              <span aria-hidden="true">✓</span> Settled
-            </span>
-          ) : (
-            <p className="text-2xl font-semibold tracking-tight tabular-nums">{formatPhp(card.amountPhpCentavos)}</p>
-          )}
-          <p className="text-sm text-ink-secondary">
-            {pluralize(card.lines.length, "transaction")}
-            <span className="sr-only">. Show details.</span>
-          </p>
+      </details>
+      {!settled && !readOnly && (
+        <div className="border-t border-separator p-3">
+          <RecordPaymentButton
+            tabId={tabId}
+            debtor={debtor}
+            creditor={creditor}
+            outstandingCentavos={card.amountPhpCentavos}
+          />
         </div>
-      </summary>
-
-      <div className="border-t border-separator px-5 pt-2 pb-5">
-        <ul aria-label={`Transactions between ${debtor.displayName} and ${creditor.displayName}`}>
-          {card.lines.map((line) => (
-            <LineItem key={line.transactionId} line={line} card={card} />
-          ))}
-        </ul>
-
-        <dl className="mt-3 space-y-1.5 border-t border-separator pt-3 text-sm">
-          {card.reducedCentavos > 0 && (
-            <>
-              <div className="flex justify-between gap-3">
-                <dt className="text-ink-secondary">Owed</dt>
-                <dd className="tabular-nums">{formatPhp(card.owedCentavos)}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-ink-secondary">Offsets and payments</dt>
-                <dd className="tabular-nums">−{formatPhp(card.reducedCentavos)}</dd>
-              </div>
-            </>
-          )}
-          <div className="flex justify-between gap-3 text-base font-semibold">
-            <dt>{settled ? "Balance" : "Outstanding"}</dt>
-            <dd className="tabular-nums">{formatPhp(card.amountPhpCentavos)}</dd>
-          </div>
-        </dl>
-      </div>
-    </details>
+      )}
+    </article>
   );
 }
 

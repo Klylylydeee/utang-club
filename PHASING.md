@@ -322,7 +322,7 @@ Scope:
 **Exit:** acceptance criteria 1--4 and 6 in `REQUIREMENTS.md` hold
 when checked by hand.
 
-## Phase 7 --- Payments (PLAN Milestone 6)
+## Phase 7 --- Payments (PLAN Milestone 6) --- ✅ done 2026-10-04
 
 Scope:
 
@@ -485,3 +485,30 @@ Record changes to D1--D13 and any new decisions here, with dates.
     -   The app content width went from `max-w-5xl` to `max-w-6xl` so
         the full transaction table fits at 1280 px without scrolling.
     -   The "Record payment" button on cards is left for Phase 7.
+-   2026-10-04 --- Phase 7 complete, plus four owner requests (PLAN
+    milestone 6b): split a bill, copy summary, phone entry, per-person
+    totals. Notes:
+    -   **Split rounding (owner decision):** leftover centavos go one
+        each to the debtors in name order; the payer is ticked by
+        default. Recorded in `SETTLEMENT_RULES.md` → *Splitting a bill*.
+        Each split row carries a note ("Split of ₱100.00 between 3
+        people, paid by Klyde").
+    -   **Record payment** stores a `type: "payment"` row debtor →
+        creditor. D1: the server refuses an amount above what is owed
+        with a `conflict` result; the sheet then offers "Save anyway".
+    -   **Copy summary** uses the Clipboard API on HTTPS and falls back
+        to a selectable text box on plain-HTTP LAN (no clipboard there).
+        No share links.
+    -   **Phone entry:** below `md` the table is replaced by a row list
+        and a bottom-sheet editor (`TransactionSheet`). Both are
+        rendered and switched with CSS. The hidden table's draft
+        restore still runs on phones; harmless, but drafts typed on
+        desktop won't show in the phone list.
+    -   **Per-person totals** only add up each person's outstanding
+        pairs (`calculatePersonTotals`); payments still go pair by pair.
+    -   **Bug found in browser testing:** when two alternative footers
+        render in the same slot, React reuses a `type="button"` element
+        as the `type="submit"` one *during* the click, and the browser
+        then submits the form ("Keep editing" saved the edit). Footer
+        variants are now keyed. Watch for this pattern anywhere a
+        confirm row replaces a form's buttons.

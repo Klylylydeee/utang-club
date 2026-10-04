@@ -1,6 +1,6 @@
 # Handoff — Utang Club
 
-*Last updated: 2026-10-04 (after Phase 6)*
+*Last updated: 2026-10-04 (after Phase 7 and the owner requests)*
 
 This is a snapshot of where the build stands. `PHASING.md` holds the
 full plan, the decisions D1–D14 and the decision log. This file covers
@@ -17,10 +17,10 @@ what exists today, what has been verified, and what's still loose.
 | 4 | Tabs and people | ✅ Done |
 | 5 | Transaction table | ✅ Done, verified in a browser (production build, phone viewport, LAN IP) |
 | 6 | Settlement cards | ✅ Done, verified in a browser (acceptance flow 1–6) |
-| 7 | Payments | ⏭️ **Next up** |
-| 8 | Hardening (Playwright suite, a11y, README) | Not started |
+| 7 | Payments, plus split / copy summary / phone entry / per-person totals | ✅ Done, verified in a browser (28/28) |
+| 8 | Hardening (Playwright suite, a11y, README) | ⏭️ **Next up** |
 
-`pnpm check` passes: typecheck, lint and **195 tests in 17 files**,
+`pnpm check` passes: typecheck, lint and **221 tests in 21 files**,
 including in-memory MongoDB tests.
 
 ## Changes the owner asked for along the way
@@ -159,8 +159,7 @@ Unchanged since the last handoff. In short:
    for the throttle comes from `x-forwarded-for` and can be spoofed. The
    global throttle is the backstop.
 6. **Not built yet:** columns for notes and transaction date (both are
-   stored and preserved through edits). There is also no bottom-sheet
-   row editor for phones, which `UI_SPEC.md` lists as optional.
+   stored and preserved through edits).
 
 ### Phase 6: Settlement summary (added after this file's Phase 5 snapshot)
 
@@ -177,22 +176,37 @@ Unchanged since the last handoff. In short:
   plus a browser run of acceptance criteria 1–6 on the production build
   at phone width (13/13; touch audit clean; no console or CSP errors).
 
-## Next: Phase 7, payments
+### Phase 7 and owner requests
 
-Spec: `PHASING.md` → Phase 7 (D1 overpayment warning, D7 prefilled
-amount), `UI_SPEC.md` → card footer "Record Payment".
+- **Record payment:** a button on each outstanding card opens a sheet
+  prefilled with the amount owed (`RecordPaymentButton` →
+  `recordPaymentAction` → `paymentService`). Overpaying needs
+  "Save anyway" (D1).
+- **Split a bill:** on the Transactions page (`SplitBillButton` →
+  `splitExpenseAction` → `splitService`), with a live preview from the
+  same pure `splitAmount` the server uses.
+- **Copy summary:** on the Settlements page (`CopySummaryButton`, text
+  from `buildSummaryText`).
+- **Phone entry:** `MobileTransactionList` + `TransactionSheet` below
+  `md`.
+- **By person:** a section on Settlements (`PersonTotalsList`, data
+  from `calculatePersonTotals`).
+- Shared `Sheet` (native `<dialog>`, a bottom sheet on phones) and
+  `Field` helpers live in `src/components/ui/`.
+- Browser run (production build, phone width, LAN IP): 28/28. It
+  covered acceptance criterion 5, a touch audit of every sheet, and
+  two regression checks for the keyed-footer bug (see the `PHASING.md`
+  decision log).
 
-- A payment is already just a transaction with `type: "payment"`. It can
-  be entered in the table today, and the cards already handle it.
-- Add a `recordPayment` action, which can reuse `createTransaction`
-  with `type: "payment"`, payer = card debtor and recipient = card
-  creditor. Add a "Record payment" button and dialog on outstanding
-  cards, prefilled with `amountPhpCentavos`.
-- Warn before saving if the amount is more than the outstanding balance
-  (D1). Do the comparison on the server or in a pure helper, not with
-  floats in the component.
-- Still open with the owner: a payment in the reverse direction
-  increases the debt (`SETTLEMENT_RULES.md` → Clarifications).
+## Next: Phase 8, hardening
+
+- Port the scratchpad browser scripts (`phase5.mjs`, `phase6.mjs`,
+  `phase7.mjs` in this session's scratchpad) into a committed
+  Playwright suite before they're lost.
+- `loading.tsx` / `error.tsx` states, an accessibility pass, README.
+- Still recommended from the review: backups, an audit trail for edits
+  and deletes, removing `ACTION_ALLOWED_ORIGINS=*`, and confirming the
+  reverse-payment rule.
 
 ## Running it
 

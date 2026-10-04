@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import {
   createTransactionAction,
   deleteTransactionAction,
@@ -82,7 +91,13 @@ function needsRowMessage(failure: ActionFailure): boolean {
   return Object.keys(failure.fieldErrors).some((field) => !VISIBLE_FIELDS.has(field));
 }
 
-export function TransactionTable(props: { tabId: string; people: PersonOption[]; rows: TransactionRow[] }) {
+export function TransactionTable(props: {
+  tabId: string;
+  people: PersonOption[];
+  rows: TransactionRow[];
+  /** Extra toolbar buttons, e.g. "Split a bill". */
+  actions?: ReactNode;
+}) {
   const { tabId, people } = props;
   const storageKey = `utang-club:unsaved:${tabId}`;
 
@@ -372,6 +387,7 @@ export function TransactionTable(props: { tabId: string; people: PersonOption[];
           Press <kbd className="font-sans font-medium">Enter</kbd> to add a row. Edits save when you leave a row.
         </p>
         <div className="flex flex-wrap gap-2">
+          {props.actions}
           {!foreignInUse && (
             <button type="button" onClick={() => setForeignToggled((on) => !on)} className={buttonStyles.quiet}>
               {foreignToggled ? "Hide foreign currency" : "Add foreign currency"}
