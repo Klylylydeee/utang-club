@@ -1,6 +1,7 @@
 import { calculatePairwiseSettlements } from "@/lib/settlement/calculatePairwiseSettlements";
 import { addMinor } from "@/lib/settlement/money";
-import { orderSettlements } from "@/lib/settlement/orderSettlements";
+import { compareByName, orderSettlements } from "@/lib/settlement/orderSettlements";
+import { calculatePersonTotals } from "@/lib/settlement/personTotals";
 import type { PairwiseSettlement, SettlementInput } from "@/lib/settlement/types";
 import type { TransactionRow } from "@/lib/transactions/types";
 import type { SettlementCard, SettlementPerson, SettlementSummary } from "./types";
@@ -19,9 +20,20 @@ export function buildSettlementSummary(
   const settlements = orderSettlements(calculatePairwiseSettlements(rows.map(toSettlementInput)), names);
 
   const cards = settlements.map((settlement) => toCard(settlement, rowsById, names));
+  const sortedPeople = [...people].sort(compareByName);
+  const totals = calculatePersonTotals(
+    settlements,
+    sortedPeople.map((person) => person.id),
+  );
   return {
     outstanding: cards.filter((card) => card.status === "outstanding"),
     settled: cards.filter((card) => card.status === "settled"),
+    people: totals.map((total, index) => ({
+      person: sortedPeople[index],
+      owesCentavos: total.owesCentavos,
+      owedCentavos: total.owedCentavos,
+      netCentavos: total.netCentavos,
+    })),
   };
 }
 

@@ -5,6 +5,11 @@ export type PersonNames = ReadonlyMap<string, string>;
 
 const collator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
 
+/** Display-name order used everywhere (cards, people, split leftovers). Ids break ties. */
+export function compareByName(a: { id: string; displayName: string }, b: { id: string; displayName: string }): number {
+  return collator.compare(a.displayName, b.displayName) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+}
+
 /**
  * Display order (SETTLEMENT_RULES.md → Ordering): by debtor display name,
  * then creditor display name, case-insensitively. Person ids break ties

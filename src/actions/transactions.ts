@@ -8,6 +8,8 @@ import {
   duplicateTransaction,
   updateTransaction,
 } from "@/lib/transactions/transactionService";
+import { splitExpense } from "@/lib/transactions/splitService";
+import { splitExpenseSchema } from "@/schemas/split";
 import { transactionInputSchema, transactionRefSchema, transactionUpdateSchema } from "@/schemas/transaction";
 
 /** Rows feed the tab's counts, its settlements and the tab list. */
@@ -37,4 +39,10 @@ export const duplicateTransactionAction = authedAction(transactionRefSchema, asy
   const { tabId, ...row } = await duplicateTransaction(input);
   revalidateTab(tabId);
   return row;
+});
+
+export const splitExpenseAction = authedAction(splitExpenseSchema, async (input) => {
+  const result = await splitExpense(input);
+  revalidateTab(input.tabId);
+  return result;
 });

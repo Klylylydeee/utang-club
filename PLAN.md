@@ -47,6 +47,29 @@ Done when settlement tests pass independently of the UI/database.
 -   Preserve audit trail.
 -   Recalculate balance.
 
+## Milestone 6b --- Owner requests (2026-10-04)
+
+Requested after Phase 6. Assumptions and affected areas:
+
+-   **Record payment** (= Milestone 6): `recordPayment` action
+    (`src/actions/payments.ts`) and a dialog on outstanding settlement
+    cards, prefilled with the outstanding amount (D7). Overpaying needs a
+    second "Save anyway" confirmation (D1); the server compares integers.
+-   **Split a bill**: one total, one payer, ticked participants (payer
+    ticked by default). Creates one expense row per other participant,
+    each owing the payer. Rounding rule decided by the owner and
+    recorded in `SETTLEMENT_RULES.md` → *Splitting a bill*. Pure
+    `splitAmount` in `src/lib/settlement/`.
+-   **Copy summary**: a plain-text summary of outstanding pairs and
+    per-person totals, to paste into chats. The clipboard API needs
+    HTTPS, so plain-HTTP LAN falls back to a selectable text box. No
+    share links (that would widen the auth scope).
+-   **Phone entry**: below the `md` breakpoint the table is replaced by
+    a row list; tapping a row (or "Add") opens a bottom-sheet editor.
+-   **Per-person totals**: for each person, the total they owe, the
+    total owed to them, and the net, derived from the pairwise
+    settlements. No global simplification; the pairs stay the source.
+
 ## Milestone 7 --- Hardening
 
 -   Integration tests.

@@ -32,7 +32,7 @@ describe("getSettlements (integration)", () => {
         ...overrides,
       });
 
-    expect(await getSettlements(tabId)).toEqual({ outstanding: [], settled: [] });
+    expect(await getSettlements(tabId)).toMatchObject({ outstanding: [], settled: [] });
 
     const water = await createTransaction(input());
     let summary = await getSettlements(tabId);

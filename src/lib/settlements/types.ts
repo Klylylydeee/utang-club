@@ -35,8 +35,19 @@ export type SettlementCard = {
   lines: SettlementLine[];
 };
 
+/** One person across all their pairs (sums only; pairs stay the source). */
+export type PersonTotalView = {
+  person: SettlementPerson;
+  owesCentavos: number;
+  owedCentavos: number;
+  /** owed − owes: positive means they get money back. */
+  netCentavos: number;
+};
+
 export type SettlementSummary = {
   /** Display order: debtor name, then creditor name. */
   outstanding: SettlementCard[];
   settled: SettlementCard[];
+  /** Everyone in the tab, in name order. */
+  people: PersonTotalView[];
 };

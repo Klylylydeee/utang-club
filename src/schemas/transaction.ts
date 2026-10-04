@@ -11,9 +11,32 @@ const MONEY_ERRORS: Record<Exclude<ParseMoneyResult, { ok: true }>["reason"], st
 };
 
 /** A required participant picker value: empty → friendly message, else an ObjectId. */
-function personRef(missingMessage: string) {
+export function personRef(missingMessage: string) {
   return z.string({ error: missingMessage }).trim().min(1, missingMessage).pipe(objectIdSchema);
 }
+
+/**
+ * A positive PHP amount as typed. Checked as a field (not only in a later
+ * transform) so its error is reported together with the other fields'
+ * errors; read the value with parsePhpAmount once the object is valid.
+ */
+export const phpAmountField = z.string({ error: "Amount is required" }).superRefine((value, ctx) => {
+  const php = parseMoneyToMinor(value, PHP_MINOR_UNITS);
+  if (!php.ok) ctx.addIssue({ code: "custom", message: MONEY_ERRORS[php.reason] });
+  else if (php.minor <= 0) ctx.addIssue({ code: "custom", message: "Amount must be greater than zero" });
+});
+
+/** Centavos from a string that already passed phpAmountField. */
+export function parsePhpAmount(value: string): number {
+  const php = parseMoneyToMinor(value, PHP_MINOR_UNITS);
+  if (!php.ok) throw new RangeError("parsePhpAmount needs a validated amount");
+  return php.minor;
+}
+
+export const transactionDateField = z.iso
+  .date({ error: "Use a valid date" })
+  .optional()
+  .or(z.literal("").transform(() => undefined));
 
 /** Raw transaction row as typed by the user (strings from the table/form). */
 const transactionFields = z.object({
@@ -22,16 +45,10 @@ const transactionFields = z.object({
   description: requiredText("Description", 200),
   foreignCurrency: optionalText(3),
   foreignAmount: optionalText(32),
-  // Checked per field (not only in the transform below) so its error is
-  // reported together with the other fields' errors.
-  amountPhp: z.string({ error: "Amount is required" }).superRefine((value, ctx) => {
-    const php = parseMoneyToMinor(value, PHP_MINOR_UNITS);
-    if (!php.ok) ctx.addIssue({ code: "custom", message: MONEY_ERRORS[php.reason] });
-    else if (php.minor <= 0) ctx.addIssue({ code: "custom", message: "Amount must be greater than zero" });
-  }),
+  amountPhp: phpAmountField,
   payerId: personRef("Choose who owes"),
   recipientId: personRef("Choose who is owed"),
-  transactionDate: z.iso.date({ error: "Use a valid date" }).optional().or(z.literal("").transform(() => undefined)),
+  transactionDate: transactionDateField,
   notes: optionalText(1000),
 });
 

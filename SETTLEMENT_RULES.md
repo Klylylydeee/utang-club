@@ -79,6 +79,26 @@ into: - A owes C
 for the MVP. Pairwise netting is intentionally auditable and mirrors the
 spreadsheet behavior.
 
+## Splitting a bill
+
+Added 2026-10-04 at the owner's request. A split is a shortcut for
+entering several ordinary expense rows at once; it adds no new rule to
+settlement itself.
+
+-   Inputs: a total, the person who paid, and the participants (the
+    payer is included by default).
+-   Each participant's share is `floor(total / participants)` centavos.
+-   The leftover `total − share × participants` centavos are given one
+    each to the **debtors** (participants other than the payer), in
+    display-name order. The payer recovers everything they're owed.
+-   One expense row is created per debtor (debtor → payer, for their
+    share). The payer's own share creates no row.
+-   A split where any debtor's share would be ₱0.00 is rejected.
+
+Example: Klyde pays ₱100.00 for Adrian, Klyde and Simon. Share =
+₱33.33, leftover = 1 centavo. Adrian owes Klyde ₱33.34 and Simon owes
+Klyde ₱33.33.
+
 ## Clarifications
 
 These were added on 2026-10-03, when the engine was implemented. They
