@@ -8,13 +8,17 @@ export const metadata: Metadata = {
 };
 
 // Never disable zoom; `viewport-fit=cover` enables safe-area insets.
+// `resizes-content`: on Android the layout shrinks when the keyboard opens,
+// so sheets and sticky buttons stay above it (iOS is handled in Sheet).
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+  // Matches the navy app bar (D18).
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f5f7" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    { media: "(prefers-color-scheme: light)", color: "#0f1a3c" },
+    { media: "(prefers-color-scheme: dark)", color: "#070b16" },
   ],
 };
 

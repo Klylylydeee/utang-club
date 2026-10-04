@@ -70,7 +70,7 @@ function AddPersonForm({ tabId }: { tabId: string }) {
           aria-describedby={nameError ? "new-person-error" : undefined}
           className={inputStyles}
         />
-        <button type="submit" disabled={isPending || !name.trim()} className={`${buttonStyles.primary} shrink-0`}>
+        <button type="submit" disabled={isPending} className={`${buttonStyles.primary} shrink-0`}>
           {isPending ? "Adding…" : "Add"}
         </button>
       </div>

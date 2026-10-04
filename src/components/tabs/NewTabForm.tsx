@@ -69,7 +69,7 @@ export function NewTabForm() {
 
       <ActionMessage failure={failure && !nameError ? failure : null} />
 
-      <button type="submit" disabled={isPending || !name.trim()} className={`${buttonStyles.primary} w-full sm:w-auto`}>
+      <button type="submit" disabled={isPending} className={`${buttonStyles.primary} w-full sm:w-auto`}>
         {isPending ? "Creating…" : "Create tab"}
       </button>
     </form>
