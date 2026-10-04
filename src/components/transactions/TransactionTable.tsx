@@ -391,37 +391,38 @@ export function TransactionTable(props: { tabId: string; people: PersonOption[];
       </div>
 
       <div className="relative overflow-x-auto overscroll-x-contain rounded-2xl border border-separator bg-raised shadow-raised">
-        <table ref={tableRef} className={`w-full border-collapse text-left ${showForeign ? "min-w-[1180px]" : "min-w-[940px]"}`}>
+        <table ref={tableRef} className={`w-full border-collapse text-left ${showForeign ? "min-w-[1108px]" : "min-w-[900px]"}`}>
           <caption className="sr-only">Transactions. Each row says who owes whom and how much.</caption>
-          {/* Fixed columns total 736px (+240 with foreign); Description takes the rest, at least ~200px. */}
+          {/* Fixed columns total 708px (+208 with foreign); Description takes the rest, at least ~190px.
+              Both layouts fit the max-w-6xl page on a laptop; narrower screens scroll inside the card. */}
           <colgroup>
             <col />
             {showForeign && (
               <>
-                <col className="w-24" />
-                <col className="w-36" />
+                <col className="w-20" />
+                <col className="w-32" />
               </>
             )}
-            <col className="w-36" />
+            <col className="w-32" />
             <col className="w-36" />
             <col className="w-36" />
             <col className="w-28" />
-            <col className="w-48" />
+            <col className="w-[180px]" />
           </colgroup>
           <thead>
             <tr className="border-b border-separator text-sm text-ink-secondary">
-              <th scope="col" className="px-3.5 py-3 font-medium">Description</th>
+              <th scope="col" className="px-3 py-3 whitespace-nowrap font-medium">Description</th>
               {showForeign && (
                 <>
-                  <th scope="col" className="px-3.5 py-3 font-medium">Currency</th>
-                  <th scope="col" className="px-3.5 py-3 text-right font-medium">Foreign amount</th>
+                  <th scope="col" className="px-3 py-3 whitespace-nowrap font-medium">Currency</th>
+                  <th scope="col" className="px-3 py-3 whitespace-nowrap text-right font-medium">Foreign amount</th>
                 </>
               )}
-              <th scope="col" className="px-3.5 py-3 text-right font-medium">Amount (₱)</th>
-              <th scope="col" className="px-3.5 py-3 font-medium">To pay</th>
-              <th scope="col" className="px-3.5 py-3 font-medium">To be paid</th>
-              <th scope="col" className="px-3.5 py-3 font-medium">Type</th>
-              <th scope="col" className="px-3.5 py-3 text-right font-medium">
+              <th scope="col" className="px-3 py-3 whitespace-nowrap text-right font-medium">Amount (₱)</th>
+              <th scope="col" className="px-3 py-3 whitespace-nowrap font-medium">To pay</th>
+              <th scope="col" className="px-3 py-3 whitespace-nowrap font-medium">To be paid</th>
+              <th scope="col" className="px-3 py-3 whitespace-nowrap font-medium">Type</th>
+              <th scope="col" className="px-3 py-3 whitespace-nowrap text-right font-medium">
                 <span className="sr-only">Status and actions</span>
               </th>
             </tr>

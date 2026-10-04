@@ -183,7 +183,7 @@ const STATUS_TEXT: Record<Exclude<RowStatusView, "idle">, { glyph: string; text:
 
 function StatusLabel({ status }: { status: RowStatusView }) {
   return (
-    <span role="status" className="min-w-20 text-right text-sm whitespace-nowrap">
+    <span role="status" className="min-w-16 text-right text-sm whitespace-nowrap">
       {status !== "idle" && (
         <span className={STATUS_TEXT[status].className}>
           <span aria-hidden="true">{STATUS_TEXT[status].glyph} </span>
