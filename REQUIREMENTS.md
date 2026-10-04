@@ -17,18 +17,19 @@ showing who needs to pay whom and why.
 
 ## Primary user
 
-A person tracking shared meals, purchases, bills, travel, and cash
-advances among friends or colleagues. Usually month by month, but
-whenever it makes sense to start fresh.
+Anyone tracking shared meals, nights out, trips, purchases and cash
+advances among friends, family or colleagues. Each person has their own
+account and their own tabs (D15–D17). An administrator can view
+everyone's tabs and manage accounts.
 
 ## Tabs
 
-A **tab** is the container for one stretch of shared expenses, the way
-you'd run a tab at a bar and settle it at the end. Most tabs cover a
-month ("October 2026"), but a tab can cover any period the user
-chooses: a trip, a payday cycle, or "until we're even". A tab has its
-own participants and transactions, and is settled on its own. New tabs
-default to the current month's name, which the user can change.
+A **tab** is the container for one activity's shared expenses, the way
+you'd run a tab at a bar and settle it at the end: a trip abroad, a
+night out, a birthday dinner. A tab has its own participants and
+transactions, and is settled on its own. New tabs start with an empty
+name; the user names them after the activity. The people in a tab are
+plain names and don't need accounts.
 
 ## MVP workflow
 

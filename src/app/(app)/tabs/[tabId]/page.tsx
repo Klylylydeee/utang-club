@@ -14,7 +14,7 @@ export default async function TabOverviewPage({ params }: PageProps<"/tabs/[tabI
         <h2 id="people-heading" className="text-lg font-semibold">
           People
         </h2>
-        <p className="mt-1 text-sm text-ink-secondary">Everyone who owes or is owed in this tab.</p>
+        <p className="mt-1 text-sm text-ink-secondary">Everyone who was there. They don’t need an account.</p>
         <div className="mt-5">
           <PeoplePanel tabId={tab.id} people={people} readOnly={readOnly} />
         </div>
@@ -28,7 +28,7 @@ export default async function TabOverviewPage({ params }: PageProps<"/tabs/[tabI
           <TabDetailsForm tabId={tab.id} name={tab.name} description={tab.description ?? ""} />
           <div className="border-t border-separator pt-5">
             <p className="mb-3 text-sm text-ink-secondary">
-              Done with this tab? Archive it to keep its history without accidental edits.
+              All settled? Archive the tab to keep its history and prevent accidental edits.
             </p>
             <ArchiveToggle tabId={tab.id} archived={false} />
           </div>

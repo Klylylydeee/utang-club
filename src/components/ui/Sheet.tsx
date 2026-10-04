@@ -41,7 +41,7 @@ export function Sheet(props: {
       onClick={(event) => {
         if (event.target === event.currentTarget) props.onRequestClose();
       }}
-      className="fixed inset-x-0 top-auto bottom-0 m-0 flex max-h-[92dvh] w-full max-w-none flex-col overflow-hidden rounded-t-2xl bg-raised p-0 text-ink shadow-raised backdrop:bg-black/40 backdrop:backdrop-blur-sm not-open:hidden sm:inset-0 sm:m-auto sm:max-h-[85dvh] sm:max-w-lg sm:rounded-2xl"
+      className="fixed inset-x-0 top-auto bottom-0 m-0 flex max-h-[92dvh] w-full max-w-none flex-col overflow-hidden rounded-t-xl bg-raised p-0 text-ink shadow-raised backdrop:bg-black/40 backdrop:backdrop-blur-sm not-open:hidden sm:inset-0 sm:m-auto sm:max-h-[85dvh] sm:max-w-lg sm:rounded-[10px]"
     >
       {open && (
         <>

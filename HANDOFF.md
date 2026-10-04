@@ -1,6 +1,6 @@
 # Handoff — Utang Club
 
-*Last updated: 2026-10-04 (after Phase 7 and the owner requests)*
+*Last updated: 2026-10-04 (after accounts, roles and the enterprise redesign)*
 
 This is a snapshot of where the build stands. `PHASING.md` holds the
 full plan, the decisions D1–D14 and the decision log. This file covers
@@ -18,6 +18,7 @@ what exists today, what has been verified, and what's still loose.
 | 5 | Transaction table | ✅ Done, verified in a browser (production build, phone viewport, LAN IP) |
 | 6 | Settlement cards | ✅ Done, verified in a browser (acceptance flow 1–6) |
 | 7 | Payments, plus split / copy summary / phone entry / per-person totals | ✅ Done, verified in a browser (28/28) |
+| 9 | Accounts, roles, admin area, enterprise look, activity copy (D15–D18) | ✅ Done, verified in a browser (31/31 account flows) |
 | 8 | Hardening (Playwright suite, a11y, README) | ⏭️ **Next up** |
 
 `pnpm check` passes: typecheck, lint and **221 tests in 21 files**,
@@ -142,8 +143,11 @@ Unchanged since the last handoff. In short:
 1. **The local database (`.data/`) contains test tabs** from the
    Phase 4 browser runs. Wipe it before real use: stop `pnpm db:local`
    and delete `.data/mongo`.
-2. **`.env.local` has no auth values yet.** The owner needs to run
-   `pnpm hash-password` and paste both lines in (README → Sign-in).
+2. **Set up accounts:** add `AUTH_SECRET` to `.env.local` (any 32+ random
+   characters) and run `pnpm create-admin` with your email (README →
+   Accounts). It promotes or creates your admin account and assigns your
+   existing tabs to it. `AUTH_PASSWORD_HASH` is no longer used and can be
+   deleted from `.env.local`.
 3. **A dev server was already running on port 3000** during this
    session (not started by the agent), and another project's dev server
    was on port 3100. Use a free port for test servers.
@@ -197,6 +201,24 @@ Unchanged since the last handoff. In short:
   covered acceptance criterion 5, a touch audit of every sheet, and
   two regression checks for the keyed-footer bug (see the `PHASING.md`
   decision log).
+
+### Accounts, roles and the enterprise look (D15–D18)
+
+- **Accounts:** `/register` and `/login` with email and password
+  (`src/app/register`, `src/app/login`). `User` model, sessions per
+  user (`src/lib/auth/sessionStore.ts`), `src/lib/users/userService.ts`.
+- **Access:** every service takes an `Actor`. Owners read and write;
+  admins read any tab and write only their own; anyone else gets "not
+  found". See `tests/db/access.test.ts`.
+- **Admin:** `/admin` (users table) and `/admin/users/[id]` (their tabs;
+  disable, role, set password). An admin viewing someone's tab sees a
+  read-only banner and a breadcrumb back to that user.
+- **Setup:** `pnpm create-admin` (replaces `pnpm hash-password`).
+- **Look:** navy app bar with Tabs / Admin and a user menu, `PageHeader`
+  with breadcrumbs, underline section tabs, 10/8 px radii, split-screen
+  sign-in and registration (`AuthLayout`).
+- **Copy:** tabs are per activity (trip, night out, dinner); new tabs
+  start blank.
 
 ## Next: Phase 8, hardening
 

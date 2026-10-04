@@ -1,20 +1,24 @@
 @import "tailwindcss";
 
 /*
- * Design tokens. Neutral "paper" surfaces and one restrained accent: ballpen
- * blue, the ink of the listahan (the utang notebook). It marks actions only.
- * Green means money coming back or a pair settled; red means an error or a
- * destructive action. Nothing else is coloured.
+ * Design tokens (D18: enterprise look). Cool slate neutrals, crisp hairlines,
+ * a navy app shell, and one accent: indigo ink, for actions only. Green means
+ * money coming back or a pair settled; red means an error or a destructive
+ * action. Nothing else is coloured.
  */
 :root {
   color-scheme: light dark;
 
-  --surface: #f5f5f7;
+  --surface: #f4f5f7;
   --surface-raised: #ffffff;
-  --surface-translucent: rgb(245 245 247 / 0.72);
-  --ink: #1d1d1f;
-  --ink-secondary: #5f5f66;
-  --separator: rgb(0 0 0 / 0.1);
+  --surface-translucent: rgb(244 245 247 / 0.8);
+  --ink: #101828;
+  --ink-secondary: #475467;
+  --separator: rgb(16 24 40 / 0.12);
+  --shell: #0f1a3c;
+  --shell-ink: #ffffff;
+  --shell-muted: rgb(255 255 255 / 0.68);
+  --shell-hover: rgb(255 255 255 / 0.1);
   --accent: #3341a8;
   --accent-hover: #2a3690;
   --accent-ink: #ffffff;
@@ -23,18 +27,22 @@
   --positive-soft: rgb(18 128 92 / 0.1);
   --negative: #c4302b;
   --focus-ring: rgb(51 65 168 / 0.4);
-  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.04);
+  --shadow-raised: 0 1px 2px rgb(16 24 40 / 0.05);
   --chevron: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M4 6l4 4 4-4%27 fill=%27none%27 stroke=%27%2386868b%27 stroke-width=%271.6%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E");
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --surface: #000000;
-    --surface-raised: #1c1c1e;
-    --surface-translucent: rgb(0 0 0 / 0.68);
-    --ink: #f5f5f7;
-    --ink-secondary: #a1a1a8;
-    --separator: rgb(255 255 255 / 0.12);
+    --surface: #0b0f19;
+    --surface-raised: #131a29;
+    --surface-translucent: rgb(11 15 25 / 0.8);
+    --ink: #e8ebf2;
+    --ink-secondary: #98a2b3;
+    --separator: rgb(255 255 255 / 0.1);
+    --shell: #070b16;
+    --shell-ink: #ffffff;
+    --shell-muted: rgb(255 255 255 / 0.62);
+    --shell-hover: rgb(255 255 255 / 0.08);
     --accent: #8e9bff;
     --accent-hover: #a7b1ff;
     --accent-ink: #0d1440;
@@ -43,7 +51,7 @@
     --positive-soft: rgb(60 207 154 / 0.14);
     --negative: #ff6961;
     --focus-ring: rgb(142 155 255 / 0.5);
-    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5);
   }
 }
 
@@ -54,6 +62,10 @@
   --color-ink: var(--ink);
   --color-ink-secondary: var(--ink-secondary);
   --color-separator: var(--separator);
+  --color-shell: var(--shell);
+  --color-shell-ink: var(--shell-ink);
+  --color-shell-muted: var(--shell-muted);
+  --color-shell-hover: var(--shell-hover);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-ink: var(--accent-ink);

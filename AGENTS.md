@@ -54,6 +54,13 @@ Utang Club should feel like a polished personal finance utility:
 friendly and modern, but not like a bank or enterprise accounting
 product.
 
+**Override (owner request, 2026-10-04, PHASING.md D18):** the whole app,
+including sign-in, now uses an *enterprise* look: a navy app bar, cool
+slate neutrals, crisp hairlines, 10px/8px radii, page headers with
+breadcrumbs, and tables for admin data. The rules above about
+accessibility, touch, one accent colour, calm motion and no clutter
+still apply.
+
 ## Core domain language
 
 A transaction has: - `description` - optional `foreignAmount` - optional
@@ -145,7 +152,7 @@ utility and never through imprecise binary floating-point calculations.
 
 ## UX
 
-The primary workflow is: 1. Open a tab (usually a month, or any period). 2. Add
+The primary workflow is: 1. Open a tab for an activity (a trip, a night out, a dinner). 2. Add
 people. 3. Enter transaction rows in a spreadsheet-like table. 4. View
 automatically calculated settlement cards. 5. Expand a card to see the
 line items that produced the balance. 6. Optionally record a
@@ -198,9 +205,18 @@ Do not add authentication, multi-currency conversion APIs, OCR, AI
 extraction, payment integrations, or complex accounting features unless
 explicitly requested.
 
-**Exception (owner request, 2026-10-03, PHASING.md D11–D13):** the app
-has a single owner-password gate with database-backed sessions. Keep it,
-but do not extend it into user accounts, roles, OAuth or email reset.
+**Exception (owner requests, 2026-10-03 and 2026-10-04, PHASING.md
+D11–D17):** the app has user accounts with open registration (email and
+password), database-backed sessions, and two roles. A `user` sees only
+their own tabs; an `admin` can view every tab (read-only) and manage
+users. Keep this, but do not add OAuth, email sending (verification or
+reset), shared tabs between users, or more roles unless asked.
+
+Every domain service takes an `Actor` (`src/lib/auth/actor.ts`) and
+checks access itself (`loadReadableTab`, `loadOwnedTab`,
+`loadWritableTab` in `src/lib/tabs/tabService.ts`). A tab the actor
+may not see is "not found", never "forbidden". Add an access test in
+`tests/db/access.test.ts` for any new read or write.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -10,7 +10,7 @@ export function tabCounts(tab: Pick<TabSummary, "participantCount" | "transactio
 /** Tabs as one grouped list (rows with a chevron), not a grid of identical cards. */
 export function TabList({ tabs, label }: { tabs: TabSummary[]; label: string }) {
   return (
-    <ul aria-label={label} className="divide-y divide-separator overflow-hidden rounded-[20px] border border-separator bg-raised">
+    <ul aria-label={label} className="divide-y divide-separator overflow-hidden rounded-[10px] border border-separator bg-raised">
       {tabs.map((tab) => (
         <li key={tab.id}>
           <Link

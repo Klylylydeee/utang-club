@@ -1,10 +1,30 @@
 # MongoDB Data Model
 
+## User
+
+Added 2026-10-04 (PHASING.md D15).
+
+``` ts
+interface User {
+  _id: ObjectId;
+  email: string;          // lowercased, trimmed; unique
+  name: string;
+  passwordHash: string;   // scrypt:N:r:p:salt:hash; never sent to the browser
+  role: "user" | "admin";
+  status: "active" | "disabled";
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+Index: `{ email: 1 }` unique.
+
 ## Tab
 
 ``` ts
 interface Tab {
   _id: ObjectId;
+  ownerId: ObjectId;     // User; only the owner can change the tab
   name: string;
   description?: string;
   baseCurrency: "PHP";
@@ -65,8 +85,9 @@ random token; the database stores its SHA-256.
 ``` ts
 interface Session {
   _id: ObjectId;
+  userId: ObjectId;            // User
   tokenHash: string;           // SHA-256 of the cookie token (unique)
-  passwordFingerprint: string; // must match the current AUTH_PASSWORD_HASH
+  passwordFingerprint: string; // must match the user's current passwordHash
   lastSeenAt: Date;
   expiresAt: Date;             // sliding 7-day idle expiry (TTL index)
   absoluteExpiresAt: Date;     // hard 30-day cap
@@ -75,7 +96,7 @@ interface Session {
 }
 ```
 
-Indexes: `{ tokenHash: 1 }` unique, `{ expiresAt: 1 }` TTL.
+Indexes: `{ tokenHash: 1 }` unique, `{ expiresAt: 1 }` TTL, `{ userId: 1 }`.
 
 ## LoginThrottle
 
@@ -85,7 +106,8 @@ Failed-login counters: one document per hashed client IP, plus one
 ``` ts
 interface LoginThrottle {
   _id: ObjectId;
-  key: string;            // HMAC of the client IP with AUTH_SECRET, or "global"
+  key: string;            // HMAC (AUTH_SECRET) of a client IP, a sign-in email, a
+                          // registering client IP, or "global"
   windowStartedAt: Date;
   failures: number;
   lockedUntil: Date | null;

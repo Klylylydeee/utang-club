@@ -17,10 +17,10 @@ export function SettlementCardView({ card, tabId, readOnly }: { card: Settlement
 
   return (
     <article
-      className={`rounded-[20px] border border-separator ${settled ? "bg-transparent" : "bg-raised shadow-raised"}`}
+      className={`rounded-[10px] border border-separator ${settled ? "bg-transparent" : "bg-raised shadow-raised"}`}
     >
       <details className="group/card">
-        <summary className="list-none rounded-[20px] px-5 pt-5 pb-4 [&::-webkit-details-marker]:hidden">
+        <summary className="list-none rounded-[10px] px-5 pt-5 pb-4 [&::-webkit-details-marker]:hidden">
           <div className="flex items-start justify-between gap-3">
             <h3 className="flex min-w-0 flex-wrap items-center gap-x-2.5 text-[17px] font-semibold">
               <span className="break-words">{debtor.displayName}</span>

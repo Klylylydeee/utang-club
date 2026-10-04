@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * Segmented control between a tab's sections. Called "sections" on purpose:
- * "tab" always means a tab of expenses (UI_SPEC.md).
+ * Underline navigation between a tab's sections. Called "sections" on
+ * purpose: "tab" always means a tab of expenses (UI_SPEC.md).
  */
 export function SectionNav({ tabId }: { tabId: string }) {
   const pathname = usePathname();
@@ -17,20 +17,21 @@ export function SectionNav({ tabId }: { tabId: string }) {
   ];
 
   return (
-    <nav aria-label="Tab sections" className="overflow-x-auto">
-      <ul className="inline-flex min-w-full gap-1 rounded-xl bg-separator/50 p-1 sm:min-w-0">
+    <nav aria-label="Tab sections" className="-mt-px overflow-x-auto border-b border-separator">
+      <ul className="flex gap-1">
         {sections.map((section) => {
           const current = pathname === section.href;
           return (
-            <li key={section.href} className="flex-1 sm:flex-none">
+            <li key={section.href}>
               <Link
                 href={section.href}
                 aria-current={current ? "page" : undefined}
-                className={`flex min-h-11 items-center justify-center rounded-lg px-4 text-[15px] font-medium whitespace-nowrap transition-colors ${
-                  current ? "bg-raised text-ink shadow-raised" : "text-ink-secondary hover:text-ink"
+                className={`relative flex min-h-11 items-center px-3 text-[15px] font-medium whitespace-nowrap transition-colors ${
+                  current ? "text-ink" : "text-ink-secondary hover:text-ink"
                 }`}
               >
                 {section.label}
+                {current && <span aria-hidden="true" className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-accent" />}
               </Link>
             </li>
           );

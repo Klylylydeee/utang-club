@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Utang Club", template: "%s · Utang Club" },
-  description: "Turn shared expenses into clear, traceable settlements.",
+  description: "Split the bill on trips, nights out and dinners, and settle up clearly.",
 };
 
 // Never disable zoom; `viewport-fit=cover` enables safe-area insets.

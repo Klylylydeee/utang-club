@@ -7,7 +7,7 @@ import type { PersonTotalView } from "@/lib/settlements/types";
  */
 export function PersonTotalsList({ people }: { people: PersonTotalView[] }) {
   return (
-    <ul className="divide-y divide-separator rounded-[20px] border border-separator bg-raised">
+    <ul className="divide-y divide-separator rounded-[10px] border border-separator bg-raised">
       {people.map((total) => {
         const square = total.netCentavos === 0;
         const getsBack = total.netCentavos > 0;

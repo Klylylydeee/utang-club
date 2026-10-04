@@ -30,6 +30,10 @@ the phase that depends on them starts.
 | D11 | Access control | A single owner password protects the whole app. There are no user accounts. Requested by the owner on 2026-10-03, which overrides the "no authentication" line in `AGENTS.md` for this gate only. | 3 |
 | D12 | Sessions | Sessions are stored on the server in MongoDB (a TTL index expires them). The browser cookie holds only a random token. This allows real logout, "log out everywhere", and automatic logout when the password changes. | 3 |
 | D13 | Password storage | Never stored in plain text. The env holds only a scrypt hash, made by a local script. The password is changed by replacing the hash. There is no email-based reset. | 3 |
+| D15 | Accounts | Users register with email and password; passwords are scrypt hashes in the `users` collection. Sessions belong to a user and end when their password changes or the account is disabled. Supersedes the single owner password (D11, D13). No emails are sent. | 9 |
+| D16 | Registration | Open: anyone who can reach the app can register a regular account. Throttled per device. | 9 |
+| D17 | Roles | `user` sees only their own tabs. `admin` can view every tab (read-only) and manage users (disable, role, set password), but can't change their own account. | 9 |
+| D18 | Visual direction | An enterprise look everywhere, overriding "not like a bank or enterprise product" in AGENTS.md: navy app bar, slate neutrals, hairlines, 10/8px radii, breadcrumbs, admin tables. | 9 |
 | D14 | External-device access | Everything must work by touch from phones and LAN devices, in dev and production builds, over HTTP or HTTPS (`UI_SPEC.md` → *Mobile and external-device access*). Settings that depend on the transport (cookie `Secure`/`__Host-`, HSTS, `upgrade-insecure-requests`) follow the protocol of the actual request, not `NODE_ENV`. | 1, 3, 4--8 |
 
 ## Phase 0 --- Repository setup
@@ -532,3 +536,21 @@ Record changes to D1--D13 and any new decisions here, with dates.
         and field-error text; one chevron for every `<select>`; no empty
         gap on the login card; counts read "4 people, 8 transactions"
         (no middle dots); the ↑↓ and ÷ glyphs are gone.
+-   2026-10-04 --- **Accounts and roles** (owner request; D15–D18), with
+    the app repositioned from monthly tabs to activities (trips, nights
+    out, dinners). Notes:
+    -   Every service takes an `Actor`; a tab the actor may not see is
+        "not found" (no probing by id). Admins get a "read-only" error
+        when trying to change someone else's tab.
+    -   `pnpm create-admin` replaces `pnpm hash-password`. It creates
+        or promotes an admin, assigns pre-accounts tabs (no `ownerId`)
+        to them, and removes pre-accounts sessions. `AUTH_PASSWORD_HASH`
+        is no longer used.
+    -   Sign-in throttling is per device and per account (HMAC of the
+        email), plus the global budget. Registration has its own budget.
+        A disabled account is only revealed after a correct password.
+    -   New tabs start with an empty name (activity placeholders) instead
+        of the current month.
+    -   Known limitation: open registration means anyone on the network
+        can create an account. Use an invite code (not built) if the app
+        is ever exposed beyond people you trust.

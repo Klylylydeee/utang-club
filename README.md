@@ -38,38 +38,39 @@ pnpm dev                     # http://localhost:3000
 `pnpm db:local` stores data in `.data/mongo` and listens on
 `127.0.0.1:27017` only, which matches the default `MONGODB_URI`.
 
-## Sign-in
+## Accounts
 
-The whole app sits behind a single owner password. There are no user
-accounts and no email reset. The password itself is never stored; only
-a scrypt hash in `.env.local`.
+Anyone who can reach the app can create an account at `/register` (name,
+email, password of at least 12 characters). Each user sees only their own
+tabs. Administrators can also view every user's tabs (read-only) and
+manage accounts under **Admin**. No emails are sent: there is no
+verification and no "forgot password"; an administrator sets a new
+password instead.
 
-1.  Run `pnpm hash-password` in an interactive terminal. It asks for the
-    password twice (at least 12 characters) without echoing it.
-2.  It prints two lines. Paste both into `.env.local`:
+**First-time setup**
 
-    ```sh
-    AUTH_PASSWORD_HASH=scrypt:...
-    AUTH_SECRET=...
-    ```
+1.  Make sure `.env.local` has `MONGODB_URI` and `AUTH_SECRET`.
+2.  Run `pnpm create-admin` in an interactive terminal. Enter your
+    email. If you already registered, that account is promoted to
+    administrator; otherwise it asks for your name and a password (not
+    echoed) and creates the account.
+3.  The script also assigns every tab created before accounts existed
+    to that administrator, and prints an `AUTH_SECRET` if one is missing.
+4.  Restart `pnpm dev` / `pnpm start` if you changed `.env.local`.
 
-3.  Restart `pnpm dev` / `pnpm start`.
+**Managing users (Admin → open a user):** disable or enable the account
+(disabling signs them out everywhere and keeps their tabs), make them an
+administrator or remove admin access, or set a new password (this also
+signs them out everywhere). Administrators can't change their own
+account, so there is always at least one active administrator.
 
-Until both values are set, the login page shows "Sign-in isn't set up
-yet".
+**Signing out:** the account menu (your initials, top right) has "Sign
+out" (this device) and "Sign out on all devices".
 
-**Changing the password:** run `pnpm hash-password` again and replace
-only `AUTH_PASSWORD_HASH`, then restart. Every existing session is tied
-to the old hash, so this signs out every device. Keep the same
-`AUTH_SECRET`; it only hashes client IPs for login throttling and has no
-effect on the password.
-
-**Signing out:** the Account menu has "Sign out" (this device) and "Sign
-out on all devices".
-
-**Lockouts:** 5 failed attempts from one client in 15 minutes locks that
-client out (5 minutes, doubling up to 1 hour). 20 failures from all
-clients combined locks every login briefly. Waiting it out is the only
+**Lockouts:** 5 failed sign-ins in 15 minutes from one device, or for one
+account, lock that device or account out (5 minutes, doubling up to 1
+hour). 20 failures from everyone combined locks all sign-ins briefly.
+Registration has its own limit per device. Waiting it out is the only
 way to unlock.
 
 ## Open it on your phone
@@ -95,7 +96,7 @@ tunnel or another hostname, set `DEV_ALLOWED_ORIGINS` (dev assets) and
 | `pnpm dev` | Dev server, reachable on the LAN |
 | `pnpm build` / `pnpm start` | Production build and server, reachable on the LAN |
 | `pnpm db:local` | Persistent local MongoDB for development |
-| `pnpm hash-password` | Generates `AUTH_PASSWORD_HASH` and `AUTH_SECRET` |
+| `pnpm create-admin` | Creates or promotes an administrator and claims tabs made before accounts |
 | `pnpm typecheck` | Generates route types, then runs `tsc` |
 | `pnpm lint` | ESLint |
 | `pnpm test` | Vitest (unit tests and in-memory MongoDB tests) |
@@ -106,8 +107,7 @@ tunnel or another hostname, set `DEV_ALLOWED_ORIGINS` (dev assets) and
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `MONGODB_URI` | yes | MongoDB connection string. Server-only, never sent to the browser. |
-| `AUTH_PASSWORD_HASH` | yes | scrypt hash of the owner password, from `pnpm hash-password` |
-| `AUTH_SECRET` | yes | At least 32 random characters, used to hash client IPs for login throttling |
+| `AUTH_SECRET` | yes | At least 32 random characters, used to hash client IPs and emails for sign-in throttling |
 | `DEV_ALLOWED_ORIGINS` | no | Extra hostnames allowed to load dev assets, comma-separated |
 | `ACTION_ALLOWED_ORIGINS` | no | Tunnel or proxy hosts allowed to call Server Actions |
 

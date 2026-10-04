@@ -13,7 +13,7 @@ export function PeoplePanel(props: { tabId: string; people: PersonSummary[]; rea
     <div className="space-y-5">
       {!props.readOnly && <AddPersonForm tabId={props.tabId} />}
       {props.people.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-separator px-4 py-6 text-center text-ink-secondary">
+        <p className="rounded-lg border border-dashed border-separator px-4 py-6 text-center text-ink-secondary">
           No one here yet. Add at least two people to start recording who owes whom.
         </p>
       ) : (
@@ -62,7 +62,7 @@ function AddPersonForm({ tabId }: { tabId: string }) {
           id="new-person"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          placeholder="Name"
+          placeholder="Name, e.g. Bea"
           maxLength={60}
           autoComplete="off"
           enterKeyHint="done"

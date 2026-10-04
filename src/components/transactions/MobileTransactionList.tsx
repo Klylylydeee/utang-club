@@ -31,13 +31,13 @@ export function MobileTransactionList(props: {
       </div>
 
       {props.rows.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-separator px-4 py-8 text-center text-ink-secondary">
+        <p className="rounded-[10px] border border-dashed border-separator px-4 py-8 text-center text-ink-secondary">
           No transactions yet. Add the first one above.
         </p>
       ) : (
         <ul
           aria-label="Transactions"
-          className="divide-y divide-separator overflow-hidden rounded-2xl border border-separator bg-raised shadow-raised"
+          className="divide-y divide-separator overflow-hidden rounded-[10px] border border-separator bg-raised shadow-raised"
         >
           {props.rows.map((row) => {
             const payer = names.get(row.payerId) ?? "Unknown";

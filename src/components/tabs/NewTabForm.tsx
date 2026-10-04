@@ -7,9 +7,9 @@ import { ActionMessage } from "@/components/ui/ActionMessage";
 import { buttonStyles, inputStyles } from "@/components/ui/styles";
 import type { ActionFailure } from "@/lib/actions/result";
 
-export function NewTabForm({ defaultName }: { defaultName: string }) {
+export function NewTabForm() {
   const router = useRouter();
-  const [name, setName] = useState(defaultName);
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [failure, setFailure] = useState<ActionFailure | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -39,6 +39,7 @@ export function NewTabForm({ defaultName }: { defaultName: string }) {
           value={name}
           onChange={(event) => setName(event.target.value)}
           maxLength={80}
+          placeholder="e.g. Japan trip, Friday inuman, Bea’s birthday dinner"
           required
           autoFocus
           aria-invalid={nameError ? true : undefined}
@@ -61,14 +62,14 @@ export function NewTabForm({ defaultName }: { defaultName: string }) {
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           maxLength={500}
-          placeholder="e.g. Rent, groceries and the Baguio weekend"
+          placeholder="e.g. Osaka and Kyoto, 12–18 March"
           className={inputStyles}
         />
       </div>
 
       <ActionMessage failure={failure && !nameError ? failure : null} />
 
-      <button type="submit" disabled={isPending} className={`${buttonStyles.primary} w-full`}>
+      <button type="submit" disabled={isPending || !name.trim()} className={`${buttonStyles.primary} w-full sm:w-auto`}>
         {isPending ? "Creating…" : "Create tab"}
       </button>
     </form>

@@ -109,6 +109,7 @@ export async function getTabDetail(tabId: string, actor: Actor): Promise<TabDeta
     people: personSummaries,
     access,
     ownerName: owner?.name ?? null,
+    ownerId: access === "admin" && tab.ownerId ? tab.ownerId.toString() : null,
   };
 }
 

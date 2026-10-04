@@ -1,45 +1,60 @@
 "use client";
 
 import { useActionState } from "react";
+import { Field } from "@/components/ui/Field";
+import { buttonStyles, inputStyles } from "@/components/ui/styles";
 import { login, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null, email: "" };
 
+/** Works without JavaScript too (a plain form post to the Server Action). */
 export function LoginForm({ next }: { next: string }) {
   const [state, formAction, isPending] = useActionState(login, initialState);
+  const invalid = state.error ? true : undefined;
+  const describedBy = state.error ? "login-error" : undefined;
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
       <input type="hidden" name="next" value={next} />
-      <div className="space-y-1.5">
-        <label htmlFor="password" className="block text-sm font-medium">
-          Password
-        </label>
+      <Field id="email" label="Email">
+        <input
+          id="email"
+          name="email"
+          type="email"
+          inputMode="email"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          defaultValue={state.email}
+          key={state.email}
+          required
+          autoFocus
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
+          className={inputStyles}
+        />
+      </Field>
+      <Field id="password" label="Password">
         <input
           id="password"
           name="password"
           type="password"
           autoComplete="current-password"
           required
-          autoFocus
-          aria-invalid={state.error ? true : undefined}
-          aria-describedby={state.error ? "login-error" : undefined}
-          className="block min-h-12 w-full rounded-xl border border-separator bg-surface px-4 outline-none transition-colors focus:border-accent"
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
+          className={inputStyles}
         />
-      </div>
+      </Field>
 
-      {/* Rendered only when there is an error, so the form has no empty gap; role=alert announces it on insert. */}
+      {/* Rendered only on error, so there's no empty gap; role=alert announces it on insert. */}
       {state.error && (
-        <p id="login-error" role="alert" className="text-sm text-negative">
+        <p id="login-error" role="alert" className="rounded-lg bg-negative/10 px-3 py-2.5 text-[15px] text-negative">
           {state.error}
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-accent px-5 font-medium text-accent-ink transition-colors hover:bg-accent-hover active:scale-[0.99] disabled:opacity-60"
-      >
+      <button type="submit" disabled={isPending} className={`${buttonStyles.primary} w-full`}>
         {isPending ? "Signing in…" : "Sign in"}
       </button>
     </form>

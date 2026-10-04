@@ -232,7 +232,7 @@ function SplitPreview(props: {
     );
   }
   return (
-    <div className="rounded-xl bg-surface p-4" aria-live="polite">
+    <div className="rounded-lg bg-surface p-4" aria-live="polite">
       <p className="mb-2 text-sm font-medium">This adds:</p>
       <ul className="space-y-1.5">
         {preview.debts.map((debt) => (

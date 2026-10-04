@@ -410,7 +410,7 @@ export function TransactionTable(props: {
         </div>
       </div>
 
-      <div className="relative overflow-x-auto overscroll-x-contain rounded-2xl border border-separator bg-raised shadow-raised">
+      <div className="relative overflow-x-auto overscroll-x-contain rounded-[10px] border border-separator bg-raised shadow-raised">
         <table ref={tableRef} className={`w-full border-collapse text-left ${showForeign ? "min-w-[1108px]" : "min-w-[900px]"}`}>
           <caption className="sr-only">Transactions. Each row says who owes whom and how much.</caption>
           {/* Fixed columns total 708px (+208 with foreign); Description takes the rest, at least ~190px.

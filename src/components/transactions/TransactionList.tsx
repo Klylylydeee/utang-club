@@ -9,7 +9,7 @@ export function TransactionList({ rows, people }: { rows: TransactionRow[]; peop
   const showForeign = rows.some((row) => row.foreignCurrency !== null);
 
   return (
-    <div className="relative overflow-x-auto overscroll-x-contain rounded-2xl border border-separator bg-raised shadow-raised">
+    <div className="relative overflow-x-auto overscroll-x-contain rounded-[10px] border border-separator bg-raised shadow-raised">
       <table className="w-full min-w-[640px] border-collapse text-left">
         <caption className="sr-only">Transactions (read-only)</caption>
         <thead>

@@ -31,4 +31,6 @@ export type TabDetail = {
   access: TabAccess;
   /** The owner's name, shown to an admin viewing someone else's tab; null otherwise. */
   ownerName: string | null;
+  /** The owner's user id when an admin views someone else's tab, for the breadcrumb; null otherwise. */
+  ownerId: string | null;
 };
