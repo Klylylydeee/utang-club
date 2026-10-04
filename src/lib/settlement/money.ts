@@ -82,6 +82,16 @@ export function minorToDecimalString(minor: number, minorUnits: number = PHP_MIN
   return `${negative ? "-" : ""}${whole}${minorUnits > 0 ? `.${fraction}` : ""}`;
 }
 
+/**
+ * Editable amount with thousands separators and no currency sign:
+ * 123403 → "1,234.03". Round-trips through parseMoneyToMinor.
+ */
+export function minorToInputString(minor: number, minorUnits: number = PHP_MINOR_UNITS): string {
+  const { negative, whole, fraction } = splitMinor(minor, minorUnits);
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${negative ? "-" : ""}${grouped}${minorUnits > 0 ? `.${fraction}` : ""}`;
+}
+
 /** UI display format: 1203975 → "₱12,039.75"; negatives → "−₱1.00". */
 export function formatPhp(centavos: number): string {
   const { negative, whole, fraction } = splitMinor(centavos, PHP_MINOR_UNITS);

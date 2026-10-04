@@ -1,6 +1,6 @@
 # Handoff — Utang Club
 
-*Last updated: 2026-10-04*
+*Last updated: 2026-10-04 (after Phase 5)*
 
 This is a snapshot of where the build stands. `PHASING.md` holds the
 full plan, the decisions D1–D14 and the decision log. This file covers
@@ -10,235 +10,178 @@ what exists today, what has been verified, and what's still loose.
 
 | Phase | Scope | State |
 |-------|-------|-------|
-| 0 | Repo setup | ⚠️ `git init` done, **no commits yet**. Everything is untracked. |
+| 0 | Repo setup | ✅ First commit made (docs plus Phases 1–4) |
 | 1 | Bootstrap (Next.js, Mongo, models, schemas, shell) | ✅ Done |
 | 2 | Settlement engine and money helpers | ✅ Done |
-| 3 | Login and security hardening | ✅ Code and tests done · ⚠️ docs not yet updated (see "Loose ends") |
-| 4 | Tabs and people | ✅ Code and tests done · ⚠️ one browser check unresolved |
-| 5 | Transaction table | ⏭️ **Next up.** The route exists as a placeholder. |
-| 6 | Settlement cards | Not started. The route exists as a placeholder. |
+| 3 | Login and security hardening | ✅ Done, docs updated |
+| 4 | Tabs and people | ✅ Done |
+| 5 | Transaction table | ✅ Done, verified in a browser (production build, phone viewport, LAN IP) |
+| 6 | Settlement cards | ⏭️ **Next up.** The route exists as a placeholder. |
 | 7 | Payments | Not started |
 | 8 | Hardening (Playwright suite, a11y, README) | Not started |
 
-`pnpm check` passes: typecheck, lint and **159 tests in 13 files**,
+`pnpm check` passes: typecheck, lint and **182 tests in 15 files**,
 including in-memory MongoDB tests.
 
 ## Changes the owner asked for along the way
 
-- **"Trip" became "Tab".** Expenses are grouped by month or any period,
-  not by trips. The rename covers the `Tab` model, `tabId` fields,
-  `/tabs/...` routes and all docs. New tabs default to the current month
-  in Manila ("October 2026"). The word "tab" always means a tab of
-  expenses. UI navigation is called a "section" (see `UI_SPEC.md`).
+- **"Trip" became "Tab".** Expenses are grouped by month or any period.
+  New tabs default to the current month in Manila ("October 2026"). The
+  word "tab" always means a tab of expenses; UI navigation is a
+  "section" (see `UI_SPEC.md`).
 - **The database-status card was removed** from the home page.
-- **A login with strong security was added** (decisions D11–D13). This
-  is an explicit exception to the "no auth" line in `AGENTS.md`.
+- **A login with strong security was added** (D11–D13). This is an
+  explicit exception to the "no auth" line, now recorded in `AGENTS.md`.
 - **Everything must work by touch from a phone on the LAN, in dev and
-  production builds** (D14). The rules are in `UI_SPEC.md`, the tests
-  in `TESTING.md`, and `AGENTS.md` → Validation references both.
+  production builds** (D14).
 
 ## What's built
 
-### Phase 1: Foundation
-- Next.js **16.3** (App Router), React 19.2, Mongoose 9, Zod 4,
-  Tailwind 4, Vitest 5, pnpm.
-  - In Next.js 16, `middleware.ts` is **`proxy.ts`**. Read
-    `node_modules/next/dist/docs/` before touching Next.js APIs.
-- `next.config.ts`:
-  - LAN IPs are allowed in dev automatically, plus `DEV_ALLOWED_ORIGINS`.
-  - `ACTION_ALLOWED_ORIGINS` is the allow-list for tunnels and proxies.
-  - Static security headers are set and `poweredByHeader` is off.
-- `src/lib/db/connect.ts`: one cached connection, with
-  `sanitizeFilter` and `strictQuery` turned on.
-- Models (`Tab`, `Person`, `Transaction`) use `strict: "throw"` and have
-  the indexes from `DATA_MODEL.md`. Money is stored as positive whole
-  numbers of minor units only.
-- `src/schemas/`: Zod for tabs, people and transactions. Amounts are
-  parsed from strings into centavos, and foreign amounts use ISO 4217
-  minor units (`src/lib/currency.ts`).
-- `pnpm db:local` (`scripts/local-db.mjs`) runs a persistent local
-  MongoDB in `.data/`, bound to 127.0.0.1 only.
-  - It's needed because this machine is **Windows on ARM**, which has no
-    native MongoDB build. The x64 binary runs under emulation.
+### Phases 1–4 (foundation, engine, access gate, tabs and people)
 
-### Phase 2: Settlement engine (`src/lib/settlement/`)
-- **`calculatePairwiseSettlements`:** a pure, deterministic function
-  that nets each pair of people.
-  - Settled pairs are still returned.
-  - Every line item carries a signed `effectCentavos`, and each
-    settlement has a four-part `breakdown`, so the UI never does
-    arithmetic.
-- **`orderSettlements`:** sorts cards by debtor name, then creditor name.
-  Settled pairs are oriented alphabetically.
-- **`money.ts`:** exact integer arithmetic that throws on overflow.
-  `formatPhp` produces `₱12,345.67`, and `formatForeign` formats other
-  currencies.
-- **Rule clarifications** were added to `SETTLEMENT_RULES.md` →
-  *Clarifications*. The most notable: a **payment in the reverse
-  direction increases the debt**. This was flagged to the owner, who
-  hasn't objected yet.
+Unchanged since the last handoff. In short:
 
-### Phase 3: Access gate (`src/lib/auth/`, `src/proxy.ts`, `src/app/login/`)
-- **Password:** one owner password, stored as scrypt (N=2¹⁵) in
-  `AUTH_PASSWORD_HASH`, generated by `pnpm hash-password`.
-  - The hash format is `scrypt:N:r:p:salt:hash`. It uses **colons**
-    because Next.js expands `$NAME` inside `.env` values.
-- **Sessions** are stored in MongoDB (`Session` model):
-  - The cookie holds only a random token; the database stores its
-    SHA-256.
-  - Sessions expire after 7 days idle (sliding) and 30 days at most.
-  - Changing the password invalidates every session through a password
-    fingerprint.
-  - "Sign out" and "Sign out on all devices" are in the Account menu.
-- **Cookie:**
-  - Over HTTPS it's `__Host-uc_session` with `Secure`.
-  - Over plain-HTTP LAN it's `uc_session`, otherwise phones would drop
-    it.
-  - It's always `HttpOnly` and `SameSite=Strict`.
-- **Two layers of checks:**
-  - `proxy.ts` only redirects requests without a cookie and sets the
-    CSP nonce.
-  - The real check is `requireSession()` in `src/app/(app)/layout.tsx`
-    and **`authedAction()`** around every Server Action.
-  - `tests/auth/actionsAreAuthed.test.ts` fails if any Server Action
-    isn't wrapped. Login is the only exemption.
-- **Brute force** (`LoginThrottle` model plus pure `throttlePolicy.ts`):
-  - 5 failures per client in 15 minutes leads to a lock of 5 → 10 → 20 →
-    40 → 60 minutes.
-  - 20 failures from all clients combined leads to a global lock.
-  - The error message is the same for every failure, and a locked-out
-    attempt still spends scrypt time so it takes as long as a real check.
-- **CSP:**
-  - Each request gets a nonce, with `'strict-dynamic'`.
-  - Dev adds `'unsafe-eval'` and `ws:`.
-  - **HSTS and `upgrade-insecure-requests` are sent only over HTTPS.**
-  - `?next=` is checked against open redirects (`safeNextPath`).
-- **Env** (`src/lib/env.ts`): split into `getDatabaseEnv()` and
-  `getAuthEnv()`. Both fail closed, and the login page shows setup
-  instructions if auth isn't configured.
+- Next.js **16.3** (App Router; `middleware.ts` is **`proxy.ts`**),
+  React 19.2, Mongoose 9, Zod 4, Tailwind 4, Vitest 5, pnpm. Read
+  `node_modules/next/dist/docs/` before touching Next.js APIs.
+- Pure settlement engine in `src/lib/settlement/` (pairwise netting,
+  signed line-item effects, four-part breakdown, ordering). Money is
+  integer centavos everywhere.
+- Owner-password gate: scrypt hash in env, MongoDB sessions, login
+  throttle, per-request CSP nonce. `authedAction()` wraps every Server
+  Action; a test fails if one isn't wrapped. `ARCHITECTURE.md` → *Access
+  gate* and README → *Sign-in* describe it.
+- Tabs and people with D5 (no removing people with transactions) and D6
+  (archived tabs are read-only) enforced on the server.
+- **Mongoose gotcha:** `sanitizeFilter` is on globally, so any query
+  operator you write yourself inside a filter value (e.g. `$in`) must be
+  wrapped in `mongoose.trusted(...)`, or it's silently neutralised.
+  Top-level `$or` and aggregation pipelines are unaffected.
 
-### Phase 4: Tabs and people
-- **Service** (`src/lib/tabs/tabService.ts`):
-  - list, detail, create, edit details, archive and unarchive
-  - add, rename and remove a person
-- **Rules enforced on the server:**
-  - Duplicate names within a tab are rejected, ignoring case (friendly
-    error, plus the unique index as a backstop).
-  - **D5:** a person with transactions can't be removed, only renamed.
-  - **D6:** an archived tab rejects all edits until it's unarchived.
-- **Actions:** `src/actions/tabs.ts`, `people.ts` and `session.ts`, all
-  wrapped in `authedAction` and returning `ActionResult`
-  (`src/lib/actions/result.ts`).
-- **Pages:**
-  - `/` lists tabs; archived ones are folded away.
-  - `/tabs/new` creates a tab.
-  - `/tabs/[id]` is the overview: people and tab details.
-  - `/tabs/[id]/transactions` and `/settlements` are **placeholders**.
-- **UI behaviour:**
-  - Adding a person keeps focus in the field for fast entry.
-  - Rename is inline; removing a person or archiving a tab asks for
-    confirmation first.
-  - No control depends on hover, and every control is at least 44 px
-    tall (`src/components/ui/styles.ts`).
-  - An expired session keeps the user's input and offers a sign-in
-    link.
+### Phase 5: Transaction entry
+
+- **Schemas** (`src/schemas/transaction.ts`): `transactionInputSchema`,
+  plus `transactionUpdateSchema` (same fields + `transactionId`) and
+  `transactionRefSchema`. The PHP amount and payer ≠ recipient errors
+  are reported in the same pass as the other field errors.
+- **Service** (`src/lib/transactions/transactionService.ts`): list (in
+  entry order), create, update (replaces all fields, unsets cleared
+  optional ones), delete, duplicate. Every write calls
+  `loadWritableTab()` (D6). Create and update check that payer and
+  recipient both belong to the tab, with per-field errors. Update
+  refuses to move a row to another tab.
+- **Actions** (`src/actions/transactions.ts`): four `authedAction`s;
+  each revalidates `/` and the tab layout, so counts update everywhere.
+- **DTO:** `TransactionRow` (`src/lib/transactions/types.ts`).
+- **UI** (`src/components/transactions/`):
+  - `TransactionTable` (client): the spreadsheet. Enter on the entry row
+    adds it and focuses a fresh entry row. Saved rows save when focus
+    leaves the row. Enter moves down, ↑/↓ move between rows in text
+    columns, and Escape reverts an unsaved edit.
+  - Per-row status says Unsaved / Saving / Saved / Not saved, as text
+    plus a glyph.
+  - Optimistic create/duplicate/delete use `useOptimistic`; a failed
+    delete visibly puts the row back.
+  - Unsaved input is mirrored to `sessionStorage` and restored, so it
+    survives reloads, section switches and an expired session.
+  - The same Zod schema runs in the browser (`validateRow.ts`) for
+    instant field errors.
+  - Foreign-currency columns stay hidden until "Add foreign currency"
+    is pressed or any row uses them.
+  - `TransactionList` (server): read-only table for archived tabs.
+  - `rowValues.ts`: pure helpers between `TransactionRow` and the
+    strings in the inputs. `minorToInputString` (in `money.ts`) formats
+    `1,234.56` without floats.
+- **Page:** `src/app/(app)/tabs/[tabId]/transactions/page.tsx` shows
+  "Add people first" when the tab has fewer than two people.
+- The decisions behind the save/rollback behaviour are in `PHASING.md`
+  → decision log, 2026-10-04 (Phase 5).
 
 ## How it was verified
 
-- **Unit and integration tests (`pnpm check`):**
-  - money, the settlement engine and ordering
-  - schemas
-  - password hashing, the throttle policy, CSP, transport detection and
-    `safeNextPath`
-  - the `authedAction` wrapper and the scan that every action is wrapped
-  - session and throttle stores
-  - the tab service, including the Phase 4 exit criterion
-- **Manual probes of the dev server over the LAN IP (`192.168.254.183`):**
-  - requests without a session redirect to `/login`, keeping `?next=`
-  - the CSP nonce appears on scripts
-  - HSTS appears only with `x-forwarded-proto: https`
-  - the "not secure" notice shows over HTTP
-- **Headless browser flow:**
-  - **How it was run:** Edge in a 390×844 touch viewport against the LAN
-    IP, using a throwaway script in the session scratchpad. It isn't in
-    the repo yet, and it used temporary credentials passed through
-    environment variables, never written to `.env.local`.
-  - **Result: 25 of 26 checks passed.** That covers:
-    - login, the wrong-password message and the session cookie
-    - creating a tab with the month default
-    - adding people (Enter keeps focus) and the duplicate rejection
-    - rename and two-step remove
-    - the section switcher and archive/unarchive
-    - sign out, after which the old session is rejected
-    - a touch audit on every screen (44 px targets, hit-testable centres)
+- **`pnpm check`**: everything above, plus new tests for the update and
+  ref schemas, `minorToInputString`, row-value helpers and client
+  validation, and `tests/db/transactionService.test.ts`. The DB tests
+  cover CRUD, people from another tab (per field), archived tabs,
+  duplicate descriptions, cross-tab moves, and D5 once rows exist.
+- **`pnpm build`** succeeds.
+- **Browser flow, Phase 5 (39/39 passed):**
+  - **Setup:** a production build (`next start`) on port 3217, opened
+    via the LAN IP in Edge at a 390×844 touch viewport. It used
+    temporary credentials passed through env vars and a throwaway
+    `utang-club-e2e` database, which was dropped afterwards.
+  - **Covered:**
+    - the empty state with fewer than two people
+    - adding rows by Enter and by tapping Add
+    - each validation error showing next to its field
+    - autosave when leaving a row; edits that survive a reload
+    - arrow-key movement and Escape
+    - duplicate, and delete with confirmation
+    - foreign columns
+    - unsaved input restored after a reload
+    - an expired session mid-edit (edit kept, sign-in link, retry
+      saves after signing in again)
+    - tab-list counts, now confirmed against an empty database, which
+      resolves the open Phase 4 check
+    - the archived read-only table
+    - 44 px / hit-testable audits on every state
     - zero console errors and zero CSP violations
-  - **One check is unresolved:** "tab listed with counts" expected
-    exactly one card reading "2 people · 0 transactions". The likely
-    cause is that earlier crashed runs left tabs with the same counts in
-    the local database, but **this hasn't been confirmed**. Recheck it
-    against an empty database.
-- **Not yet verified:**
-  - the production build (`pnpm build && pnpm start`) with auth, and its
-    `Cache-Control` header (dev overrides it)
-  - a real phone
-  - the `pnpm hash-password` prompt itself (the hashing code is tested)
+  - **Bug found and fixed:** on phones the whole page was 823 px wide,
+    because absolutely-positioned `sr-only` text escaped the table's
+    scroll box. The scroll box is now `relative`.
+  - **Where the scripts are:** `phase5.mjs` is in this session's
+    scratchpad, and the Phase 4 `flow.mjs` with its `playwright-core`
+    install is in an earlier session's scratchpad. Neither is in the
+    repo; see loose end 4.
+- **Still not verified:** a real phone, the `pnpm hash-password`
+  prompt itself, and the production `Cache-Control` header (not
+  checked this time).
 
-## Loose ends (fix before or during Phase 5)
+## Loose ends
 
-1. **No commits.** Make the first commit: the docs plus Phases 1–4.
-   Confirm `.env.local` and `.data/` are ignored; they are in
-   `.gitignore`.
-2. **`.env.example` lacks `AUTH_PASSWORD_HASH` and `AUTH_SECRET`.** Add
-   them as placeholders.
-3. **The README has no "Sign-in" section**, although the login error
-   message points to "README → Sign-in". It should cover
-   `pnpm hash-password`, `AUTH_SECRET`, and how to change the password
-   (which signs out every device).
-4. **Phase 3 doc updates are still pending**, as promised in the
-   `PHASING.md` decision log:
-   - `AGENTS.md`: the auth exception and the `authedAction` rule.
-   - `ARCHITECTURE.md`: the proxy and two-layer check, `src/actions/`,
-     and the `(app)` route group.
-   - `DATA_MODEL.md`: the `Session` and `LoginThrottle` collections, and
-     the `Tab` rename (Trip → Tab is already done).
-   - `PHASING.md`:
-     - Mark Phases 3 and 4 done.
-     - Note that `AUTH_COOKIE_SECRET` was renamed **`AUTH_SECRET`**, and
-       that it's used only for hashing IPs, not as a password pepper.
-       That change keeps password rotation independent of the secret.
-     - Note that Proxy's matcher skips prefetch requests. That's safe
-       because the layout re-checks the session.
-5. **The local database (`.data/`) contains test tabs** from the browser
-   runs. Wipe it before real use: stop `pnpm db:local` and delete
-   `.data/mongo`.
-6. **`.env.local` has no auth values yet.** The owner needs to run
-   `pnpm hash-password` and paste both lines in. Until then the app
-   shows "Sign-in isn't set up yet".
-7. **Port the browser flow into the repo** as the Phase 8 Playwright
+1. **The local database (`.data/`) contains test tabs** from the
+   Phase 4 browser runs. Wipe it before real use: stop `pnpm db:local`
+   and delete `.data/mongo`.
+2. **`.env.local` has no auth values yet.** The owner needs to run
+   `pnpm hash-password` and paste both lines in (README → Sign-in).
+3. **A dev server was already running on port 3000** during this
+   session (not started by the agent), and another project's dev server
+   was on port 3100. Use a free port for test servers.
+4. **Port the browser flows into the repo** as the Phase 8 Playwright
    suite (`TESTING.md` → *External-device and touch tests*). It needs:
-   - `@playwright/test` (not installed yet)
+   - `@playwright/test`
    - the LAN IP as `baseURL`
-   - the elementFromPoint/44 px audit, which must skip disabled controls
-     and controls inside closed `<details>` menus
-8. **Known limitation:** without a trusted reverse proxy, the client IP
-   comes from `x-forwarded-for` and can be spoofed. The global throttle
-   is the backstop. During an attack, the global lock can also lock out
-   the owner for up to 30 minutes.
+   - the touch audit that skips disabled controls, controls inside
+     closed `<details>`, and anything off screen
+   - a check that `innerWidth` stays at the device width, because a
+     too-wide page makes mobile browsers zoom out and hides the problem
+5. **Known limitation:** without a trusted reverse proxy, the client IP
+   for the throttle comes from `x-forwarded-for` and can be spoofed. The
+   global throttle is the backstop.
+6. **Not built yet:** columns for notes and transaction date (both are
+   stored and preserved through edits). There is also no bottom-sheet
+   row editor for phones, which `UI_SPEC.md` lists as optional.
 
-## Next: Phase 5, transaction entry
+## Next: Phase 6, settlement summary
 
-Spec: `PHASING.md` → Phase 5, `UI_SPEC.md` → Transactions view, and
-`TESTING.md` → validation tests. What already exists:
+Spec: `PHASING.md` → Phase 6, `UI_SPEC.md` → settlement cards,
+`REQUIREMENTS.md` acceptance criteria 1–4 and 6. What already exists:
 
-- **Validation:** `transactionInputSchema` (`src/schemas/transaction.ts`)
-  takes strings straight from the table and converts them to centavos.
-- **Archived tabs:** `loadWritableTab()` in `tabService.ts` enforces D6.
-  Use it in every transaction write.
-- **Server-side check still to add:** that both the payer and the
-  recipient belong to the tab in the request.
-- **Engine:** the settlement engine is ready for Phase 6 and takes
-  `SettlementInput[]`, so map the transaction documents into that shape.
-- **Page:** the placeholder is `src/app/(app)/tabs/[tabId]/transactions/page.tsx`.
+- **Engine:** `calculatePairwiseSettlements(SettlementInput[])` and
+  `orderSettlements(settlements, names)`. Map `TransactionRow` (or the
+  raw docs) to `SettlementInput`: `id`, `type`, `payerId`,
+  `recipientId`, `amountPhpCentavos`, `transactionDate` (Date or null),
+  `createdAt` (Date).
+- **Line items** carry signed `effectCentavos`, and each settlement has
+  a `breakdown`, so the cards need no arithmetic.
+- **Data:** `listTransactions(tabId)` and `loadTabOr404()` (people)
+  give everything a `getSettlements` service needs. Put the service in
+  `src/lib/settlements/` (or next to the engine) and keep it
+  server-only.
+- **Revalidation:** transaction actions already revalidate the whole
+  tab layout, so the settlements page refreshes after any edit.
+- **Page:** the placeholder is
+  `src/app/(app)/tabs/[tabId]/settlements/page.tsx`.
 
 ## Running it
 

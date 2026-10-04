@@ -1,22 +1,54 @@
 import type { Metadata } from "next";
-import { cardStyles } from "@/components/ui/styles";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { TransactionList } from "@/components/transactions/TransactionList";
+import { TransactionTable } from "@/components/transactions/TransactionTable";
+import { buttonStyles, cardStyles } from "@/components/ui/styles";
 import { loadTabOr404 } from "@/lib/tabs/loadTab";
+import { listTransactions } from "@/lib/transactions/transactionService";
 
 export const metadata: Metadata = { title: "Transactions" };
 
-// Placeholder until the transaction table lands (PHASING.md → Phase 5).
 export default async function TransactionsPage({ params }: PageProps<"/tabs/[tabId]/transactions">) {
-  const { tab } = await loadTabOr404((await params).tabId);
+  const { tab, people } = await loadTabOr404((await params).tabId);
+  const rows = await listTransactions(tab.id);
+  const options = people.map((person) => ({ id: person.id, displayName: person.displayName }));
+
+  if (tab.status === "archived") {
+    return rows.length > 0 ? (
+      <TransactionList rows={rows} people={options} />
+    ) : (
+      <EmptyState title="No transactions" body="This tab was archived without any transactions." />
+    );
+  }
+
+  if (people.length < 2) {
+    return (
+      <EmptyState
+        title="Add people first"
+        body="A transaction needs someone who owes and someone who is owed. Add at least two people to this tab."
+        action={
+          <Link href={`/tabs/${tab.id}`} className={buttonStyles.primary}>
+            Add people
+          </Link>
+        }
+      />
+    );
+  }
+
+  return <TransactionTable tabId={tab.id} people={options} rows={rows} />;
+}
+
+function EmptyState(props: { title: string; body: string; action?: ReactNode }) {
   return (
-    <section className={`${cardStyles} px-6 py-12 text-center`} aria-labelledby="transactions-empty">
-      <h2 id="transactions-empty" className="text-lg font-semibold">
-        No transactions yet
-      </h2>
-      <p className="mt-1 text-ink-secondary">
-        {tab.transactionCount === 0
-          ? "Transaction entry is coming next."
-          : `${tab.transactionCount} recorded. The table view is coming next.`}
-      </p>
+    <section className={`${cardStyles} space-y-4 px-6 py-12 text-center`} aria-labelledby="transactions-empty">
+      <div>
+        <h2 id="transactions-empty" className="text-lg font-semibold">
+          {props.title}
+        </h2>
+        <p className="mx-auto mt-1 max-w-prose text-ink-secondary">{props.body}</p>
+      </div>
+      {props.action}
     </section>
   );
 }

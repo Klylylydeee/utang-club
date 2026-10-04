@@ -280,7 +280,7 @@ Scope:
 **Exit:** a user can create a tab, add Adrian and Klyde, and gets an
 error when adding "adrian". Validation tests pass.
 
-## Phase 5 --- Transaction entry (PLAN Milestone 4)
+## Phase 5 --- Transaction entry (PLAN Milestone 4) --- ✅ done 2026-10-04
 
 Scope:
 
@@ -441,3 +441,29 @@ Record changes to D1--D13 and any new decisions here, with dates.
         `authedAction`, so the client can keep unsaved input.
     -   `AGENTS.md`, `ARCHITECTURE.md`, `DATA_MODEL.md`, `README.md` and
         `.env.example` now describe the gate.
+-   2026-10-04 --- Phase 5 complete. Decisions made along the way:
+    -   **Saving:** a saved row saves when focus leaves the row (or on
+        Enter, which moves down a row). The entry row at the bottom is
+        only saved on Enter or "Add", so tapping elsewhere never creates
+        a half-typed row.
+    -   **"Rolled back visibly"** applies to what's *saved*: a failed
+        delete puts the row back with a message, and a failed create
+        returns the row above the entry row. A failed *edit* keeps what
+        the user typed, marked "Not saved", with "Undo my changes",
+        because unsaved edits must never be discarded silently.
+    -   **Session expiry and navigation:** unsaved input is mirrored to
+        `sessionStorage` per tab and restored on return, so signing in
+        again (or reloading, or switching sections) loses nothing. A
+        `beforeunload` warning covers closing the browser tab.
+    -   **Validation** runs the same Zod schema in the browser for
+        instant field errors; the server re-validates every write. The
+        PHP amount and payer ≠ recipient checks now report together with
+        the other field errors in one pass.
+    -   **Narrow screens:** the table scrolls horizontally inside its
+        card (the bottom-sheet editor in `UI_SPEC.md` is optional and
+        not built). The scroll box must be `position: relative`, or
+        Tailwind's absolutely-positioned `sr-only` text escapes the clip
+        and widens the whole page on phones.
+    -   Notes and transaction date are stored and carried through edits
+        but have no table columns yet.
+    -   Duplicate copies the row's *saved* values, not unsaved edits.

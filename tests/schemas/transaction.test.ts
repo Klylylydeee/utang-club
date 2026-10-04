@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { transactionInputSchema, type TransactionFormInput } from "@/schemas/transaction";
+import {
+  transactionInputSchema,
+  transactionRefSchema,
+  transactionUpdateSchema,
+  type TransactionFormInput,
+} from "@/schemas/transaction";
 
 const ADRIAN = "65a000000000000000000001";
 const KLYDE = "65a000000000000000000002";
@@ -76,5 +81,31 @@ describe("transactionInputSchema", () => {
   it("enforces text length limits", () => {
     expect(errorPaths(row({ description: "x".repeat(201) }))).toContain("description");
     expect(errorPaths(row({ notes: "x".repeat(1001) }))).toContain("notes");
+  });
+});
+
+describe("transactionUpdateSchema", () => {
+  const ROW = "65a000000000000000000010";
+
+  it("parses like a new row and keeps the transaction id", () => {
+    expect(transactionUpdateSchema.parse({ ...row(), transactionId: ROW })).toMatchObject({
+      transactionId: ROW,
+      amountPhpCentavos: 12303,
+      payerId: ADRIAN,
+    });
+  });
+
+  it("applies the same validation as a new row", () => {
+    const result = transactionUpdateSchema.safeParse({ ...row({ amountPhp: "0", recipientId: ADRIAN }), transactionId: ROW });
+    expect(result.success).toBe(false);
+    const paths = result.success ? [] : result.error.issues.map((issue) => issue.path.join("."));
+    expect(paths).toEqual(expect.arrayContaining(["amountPhp", "recipientId"]));
+  });
+
+  it("requires a valid transaction id", () => {
+    expect(transactionUpdateSchema.safeParse(row()).success).toBe(false);
+    expect(transactionUpdateSchema.safeParse({ ...row(), transactionId: '{"$gt":""}' }).success).toBe(false);
+    expect(transactionRefSchema.safeParse({ transactionId: ROW }).success).toBe(true);
+    expect(transactionRefSchema.safeParse({ transactionId: "nope" }).success).toBe(false);
   });
 });

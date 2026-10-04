@@ -4,6 +4,7 @@ import {
   formatForeign,
   formatPhp,
   minorToDecimalString,
+  minorToInputString,
   parseMoneyToMinor,
   subtractMinor,
   sumMinor,
@@ -105,5 +106,18 @@ describe("formatForeign", () => {
     expect(formatForeign(246, "USD", 2)).toContain("2.46");
     expect(formatForeign(1500, "JPY", 0)).toMatch(/1,500$/);
     expect(formatForeign(1234, "KWD", 3)).toContain("1.234");
+  });
+});
+
+describe("minorToInputString", () => {
+  it("groups thousands and round-trips through the parser", () => {
+    expect(minorToInputString(123403)).toBe("1,234.03");
+    expect(minorToInputString(12303)).toBe("123.03");
+    expect(minorToInputString(1)).toBe("0.01");
+    expect(minorToInputString(150000, 0)).toBe("150,000");
+    expect(minorToInputString(1234567, 3)).toBe("1,234.567");
+    for (const [minor, units] of [[123403, 2], [100000000, 2], [150000, 0], [1234567, 3]] as const) {
+      expect(parseMoneyToMinor(minorToInputString(minor, units), units)).toEqual({ ok: true, minor });
+    }
   });
 });

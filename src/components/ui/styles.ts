@@ -16,4 +16,16 @@ export const buttonStyles = {
 export const inputStyles =
   "block min-h-11 w-full rounded-xl border border-separator bg-surface px-3.5 text-ink outline-none transition-colors placeholder:text-ink-secondary/70 focus:border-accent aria-[invalid=true]:border-negative";
 
-export const cardStyles = "rounded-2xl border border-separator bg-raised shadow-raised";
+/**
+ * Spreadsheet cell controls: borderless until hovered or focused, still
+ * 44px tall. The focus ring is drawn inside so the scrolling table can't
+ * clip it.
+ */
+export const cellInputStyles =
+  "block min-h-11 w-full rounded-lg border border-transparent bg-transparent px-2.5 text-ink outline-none transition-colors placeholder:text-ink-secondary/60 hover:border-separator focus:border-accent focus:bg-raised focus-visible:outline-offset-[-3px] read-only:text-ink-secondary aria-[invalid=true]:border-negative";
+
+/** Square 44px icon button for row actions; always visible, never hover-only. */
+export const iconButtonStyles =
+  "inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-accent-soft hover:text-ink active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50";
+
+export const cardStyles ="rounded-2xl border border-separator bg-raised shadow-raised";

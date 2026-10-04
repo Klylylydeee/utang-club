@@ -194,7 +194,7 @@ function duplicateNameOr(error: unknown, displayName: string): unknown {
   return code === 11000 ? duplicateName(displayName) : error;
 }
 
-/** Keeps "recently updated" ordering meaningful when people change. */
-async function touchTab(tabId: Types.ObjectId) {
+/** Keeps "recently updated" ordering meaningful when people or transactions change. */
+export async function touchTab(tabId: Types.ObjectId) {
   await Tab.updateOne({ _id: tabId }, { $currentDate: { updatedAt: true } });
 }
